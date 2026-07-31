@@ -1,51 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Edge runtime shim for __dirname and __filename
-if (typeof (globalThis as Record<string, unknown>).__dirname === "undefined") {
-  (globalThis as Record<string, unknown>).__dirname = "";
-}
-if (typeof (globalThis as Record<string, unknown>).__filename === "undefined") {
-  (globalThis as Record<string, unknown>).__filename = "";
-}
-
-/** Cookie-only gate; no better-auth imports (Edge-compatible). */
-function hasSessionToken(request: NextRequest): boolean {
-  const raw = request.headers.get("cookie");
-  if (!raw) return false;
-  const names = [
-    "__Secure-better-auth.session_token",
-    "better-auth.session_token",
-    "__Secure-better-auth-session_token",
-    "better-auth-session_token",
-  ];
-  for (const part of raw.split(";")) {
-    const name = part.trim().split("=")[0];
-    if (name && names.includes(name)) return true;
-  }
-  return false;
-}
-
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const sessionCookie = hasSessionToken(request);
-  const isLogin = pathname === "/login";
-  const isAuthApi = pathname.startsWith("/api/auth");
+  try {
+    const pathname = request.nextUrl.pathname;
 
-  if (isAuthApi) {
+    // Skip auth check for auth API routes
+    if (pathname.startsWith("/api/auth")) {
+      return NextResponse.next();
+    }
+
+    const cookieHeader = request.headers.get("cookie") || "";
+    const hasSession =
+      cookieHeader.includes("better-auth.session_token") ||
+      cookieHeader.includes("__Secure-better-auth.session_token");
+
+    const isLogin = pathname === "/login";
+
+    if (!hasSession && !isLogin) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (hasSession && isLogin) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
+  } catch (err) {
+    console.error("[Middleware] Execution error:", err);
     return NextResponse.next();
   }
-
-  if (!sessionCookie && !isLogin) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if (sessionCookie && isLogin) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  return NextResponse.next();
 }
 
 export const config = {
