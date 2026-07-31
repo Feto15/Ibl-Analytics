@@ -1,3 +1,11 @@
+// Shim Node.js globals for Vercel Edge Runtime compatibility
+if (typeof (globalThis as Record<string, unknown>).__dirname === "undefined") {
+  (globalThis as Record<string, unknown>).__dirname = "";
+}
+if (typeof (globalThis as Record<string, unknown>).__filename === "undefined") {
+  (globalThis as Record<string, unknown>).__filename = "";
+}
+
 import { NextRequest, NextResponse } from "next/server";
 
 /** Cookie-only gate; no better-auth imports (Edge-compatible). */
