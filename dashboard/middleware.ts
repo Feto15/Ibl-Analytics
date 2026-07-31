@@ -1,9 +1,20 @@
-// Shim Node.js globals for Vercel Edge Runtime compatibility
-if (typeof (globalThis as Record<string, unknown>).__dirname === "undefined") {
-  (globalThis as Record<string, unknown>).__dirname = "";
-}
-if (typeof (globalThis as Record<string, unknown>).__filename === "undefined") {
-  (globalThis as Record<string, unknown>).__filename = "";
+// Explicitly set Node.js runtime for middleware to support Node.js globals on Vercel
+export const runtime = "nodejs";
+
+// Shim free variables __dirname and __filename if evaluated in Edge/bundled scope
+try {
+  // @ts-ignore
+  if (typeof __dirname === "undefined") {
+    // @ts-ignore
+    var __dirname = "";
+  }
+  // @ts-ignore
+  if (typeof __filename === "undefined") {
+    // @ts-ignore
+    var __filename = "";
+  }
+} catch {
+  // Ignore scope errors
 }
 
 import { NextRequest, NextResponse } from "next/server";
