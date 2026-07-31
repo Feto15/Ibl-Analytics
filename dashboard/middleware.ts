@@ -1,10 +1,25 @@
-// dashboard/middleware.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
+
+/** Cookie-only gate; no better-auth imports (Edge-compatible). */
+function hasSessionToken(request: NextRequest): boolean {
+  const raw = request.headers.get("cookie");
+  if (!raw) return false;
+  const names = [
+    "__Secure-better-auth.session_token",
+    "better-auth.session_token",
+    "__Secure-better-auth-session_token",
+    "better-auth-session_token",
+  ];
+  for (const part of raw.split(";")) {
+    const name = part.trim().split("=")[0];
+    if (name && names.includes(name)) return true;
+  }
+  return false;
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = getSessionCookie(request);
+  const sessionCookie = hasSessionToken(request);
   const isLogin = pathname === "/login";
   const isAuthApi = pathname.startsWith("/api/auth");
 
