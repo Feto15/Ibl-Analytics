@@ -1,23 +1,12 @@
-// Explicitly set Node.js runtime for middleware to support Node.js globals on Vercel
-export const runtime = "nodejs";
-
-// Shim free variables __dirname and __filename if evaluated in Edge/bundled scope
-try {
-  // @ts-ignore
-  if (typeof __dirname === "undefined") {
-    // @ts-ignore
-    var __dirname = "";
-  }
-  // @ts-ignore
-  if (typeof __filename === "undefined") {
-    // @ts-ignore
-    var __filename = "";
-  }
-} catch {
-  // Ignore scope errors
-}
-
 import { NextRequest, NextResponse } from "next/server";
+
+// Edge runtime shim for __dirname and __filename
+if (typeof (globalThis as Record<string, unknown>).__dirname === "undefined") {
+  (globalThis as Record<string, unknown>).__dirname = "";
+}
+if (typeof (globalThis as Record<string, unknown>).__filename === "undefined") {
+  (globalThis as Record<string, unknown>).__filename = "";
+}
 
 /** Cookie-only gate; no better-auth imports (Edge-compatible). */
 function hasSessionToken(request: NextRequest): boolean {
