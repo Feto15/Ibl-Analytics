@@ -1,0 +1,35 @@
+.env
+.env.*
+!.env.example
+.dev.vars
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated extraction artifacts (keep local only)
+data/
+
+# Dashboard build / deps
+dashboard/node_modules/
+dashboard/.next/
+dashboard/.open-next/
+dashboard/.wrangler/
+dashboard/.pnpm-store/
+dashboard/dist/
+dashboard/build/
+dashboard/out/
+dashboard/*.tsbuildinfo
+dashboard/next-env.d.ts
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.pem
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+pnpm-debug.log*

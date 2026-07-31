@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local wrangler/opennext preview (never commit real values).
+DATABASE_URL="postgresql://USER:PASSWORD@HOST-POOLER/DB?sslmode=require"
+BETTER_AUTH_SECRET="generate-a-long-random-secret"
+BETTER_AUTH_URL="http://localhost:8787"

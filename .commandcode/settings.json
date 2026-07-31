@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(node -v && pnpm -v 2>/dev/null; echo \"---\"; cd \"/Users/rezel/Cursor/IBL Analytic/dashboard\" && ls -la node_modules/.bin/ 2>/dev/null | head -5; echo \"--- next ---\"; ls node_modules/next/package.json 2>/dev/null && cat node_modules/next/package.json | grep '\"version\"' | head -1)",
+      "Shell(pnpm:*)",
+      "Shell(node /private/tmp/commandcode-501/-Users-rezel-Cursor-IBL-Analytic/3c584f9b-ed4b-4b4f-b62e-9846fcf91fb6/scratchpad/inspect.mjs 2 >& 1)",
+      "Shell(cp:*)",
+      "Shell(node _inspect.mjs 2 >& 1)",
+      "Shell(node _inspect2.mjs 2 >& 1)",
+      "Shell(rm:*)",
+      "Shell(perl -0pi -e s/numFloat\\((r\\.efg_percent)\\)/num($1)/g; s/numFloat\\((r\\.ts_percent)\\)/num($1)/g; s/numFloat\\((r\\.possessions)\\)/num($1)/g; s/numFloat\\((r\\.opponent_possessions)\\)/num($1)/g; s/numFloat\\((r\\.pace)\\)/num($1)/g; s/numFloat\\((r\\.ortg)\\)/num($1)/g; s/numFloat\\((r\\.drtg)\\)/num($1)/g; s/numFloat\\((r\\.net_rating)\\)/num($1)/g lib/db/queries/games.ts)",
+      "Shell(npx tsc --noEmit -p tsconfig.json 2 >& 1)",
+      "Shell(grep:*)",
+      "Shell(./node_modules/.bin/tsc:*)",
+      "Shell(cd \"/Users/rezel/Cursor/IBL Analytic/dashboard\" && ls node_modules/typescript/bin/ 2>/dev/null; find node_modules/.pnpm -maxdepth 2 -name tsc -type f 2>/dev/null | head -3)",
+      "Shell(ls:*)",
+      "Shell(perl -0pi -e s/timestamptz\\(\"started_at\"\\)/timestamp(\"started_at\", { withTimezone: true, mode: \"date\" })/g; s/timestamptz\\(\"finished_at\"\\)/timestamp(\"finished_at\", { withTimezone: true, mode: \"date\" })/g; s/timestamptz\\(\"extracted_at\"\\)/timestamp(\"extracted_at\", { withTimezone: true, mode: \"date\" })/g; s/timestamptz\\(\"created_at\"\\)/timestamp(\"created_at\", { withTimezone: true, mode: \"date\" })/g lib/db/schema.ts)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
