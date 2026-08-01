@@ -2,6 +2,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { run } from "../client";
 import { int, num, str } from "./helpers";
+import { canonicalTeamIdExpression } from "../team-identity";
 import type { ShotPoint } from "../types";
 
 export interface ShotChartFilters {
@@ -56,7 +57,7 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
     sql`
       select
         s.shot_id::int as shot_id, s.game_id::int as game_id,
-        s.team_id::int as team_id, t.code as team_code,
+        ${canonicalTeamIdExpression(sql`s.team_id`, sql`g.season_year`)}::int as team_id, t.code as team_code,
         s.player_id::int as player_id, p.display_name as player_name,
         s.made, s.points,
         s.court_x_meters::float8 as court_x, s.court_y_meters::float8 as court_y,
@@ -65,7 +66,7 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
         s.period_no::int as period_no, s.clock
       from shots s
       join games g on g.game_id = s.game_id
-      join teams t on t.team_id = s.team_id
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`s.team_id`, sql`g.season_year`)}
       left join players p on p.player_id = s.player_id
       where ${where}
       order by s.game_id, s.shot_id

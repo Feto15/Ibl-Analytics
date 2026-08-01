@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 import { run } from "../client";
 import { countRows, int, num, str } from "./helpers";
 import { gameRowQuery } from "./overview";
+import { teamIdMatches } from "../team-identity";
+import { canonicalTeamIdExpression } from "../team-identity";
 import type { GameRow, PageResult } from "../types";
 
 const SORT_MAP: Record<string, string> = {
@@ -28,7 +30,9 @@ export async function getGames(
   const conditions = [];
   if (opts.season) conditions.push(sql`g.season_year = ${opts.season}`);
   if (opts.team) {
-    conditions.push(sql`(g.home_team_id = ${opts.team} or g.away_team_id = ${opts.team})`);
+    conditions.push(
+      sql`(${teamIdMatches(sql`g.home_team_id`, opts.team, opts.season)} or ${teamIdMatches(sql`g.away_team_id`, opts.team, opts.season)})`
+    );
   }
   if (opts.q) {
     conditions.push(
@@ -124,7 +128,7 @@ export async function getTeamBoxScores(gameId: number) {
   }[]>(
     sql`
       select
-        tgs.team_id::int as team_id, t.code, t.name, tgs.is_home,
+        ${canonicalTeamIdExpression(sql`tgs.team_id`, sql`g.season_year`)}::int as team_id, t.code, t.name, tgs.is_home,
         tgs.points, tgs.fg_made, tgs.fg_attempted,
         tgs.two_pt_made, tgs.two_pt_attempted,
         tgs.three_pt_made, tgs.three_pt_attempted,
@@ -134,7 +138,8 @@ export async function getTeamBoxScores(gameId: number) {
         tgs.personal_fouls, tgs.plus_minus, tgs.efficiency,
         tgs.efg_percent::float8 as efg_percent, tgs.ts_percent::float8 as ts_percent
       from team_game_stats tgs
-      join teams t on t.team_id = tgs.team_id
+      join games g on g.game_id = tgs.game_id
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`tgs.team_id`, sql`g.season_year`)}
       where tgs.game_id = ${gameId}
       order by tgs.is_home desc
     `
@@ -183,7 +188,7 @@ export async function getGameTeamMetrics(gameId: number) {
   }[]>(
     sql`
       select
-        tgm.team_id::int as team_id, t.code, t.name, tgs.is_home,
+        ${canonicalTeamIdExpression(sql`tgm.team_id`, sql`g.season_year`)}::int as team_id, t.code, t.name, tgs.is_home,
         tgm.possessions_estimate::float8 as possessions,
         tgm.opponent_possessions_estimate::float8 as opponent_possessions,
         tgm.pace::float8 as pace,
@@ -191,7 +196,8 @@ export async function getGameTeamMetrics(gameId: number) {
         tgm.defensive_rating::float8 as drtg,
         tgm.net_rating::float8 as net_rating
       from team_game_metrics tgm
-      join teams t on t.team_id = tgm.team_id
+      join games g on g.game_id = tgm.game_id
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`tgm.team_id`, sql`g.season_year`)}
       left join team_game_stats tgs on tgs.game_id = tgm.game_id and tgs.team_id = tgm.team_id
       where tgm.game_id = ${gameId}
       order by tgs.is_home desc

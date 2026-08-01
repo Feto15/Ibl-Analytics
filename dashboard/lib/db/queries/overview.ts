@@ -5,6 +5,7 @@ import { cached } from "../cache";
 import { int, num, str } from "./helpers";
 import { excludeBoxScoreReview } from "./review-scope";
 import type { ReviewMode } from "@/lib/review";
+import { canonicalTeamId, canonicalTeamIdExpression } from "../team-identity";
 import type {
   GameRow,
   GameTrendPoint,
@@ -116,7 +117,7 @@ async function loadStandings(
           (100.0 * sum(tgs.points) / nullif(2 * (sum(tgs.fg_attempted) + 0.44 * sum(tgs.ft_attempted)), 0))::float8 as ts
         from team_game_stats tgs
         join games g on g.game_id = tgs.game_id
-        join teams t on t.team_id = tgs.team_id
+        join teams t on t.team_id = ${canonicalTeamIdExpression(sql`tgs.team_id`, sql`g.season_year`)}
         join team_game_metrics tgm on tgm.game_id = tgs.game_id and tgm.team_id = tgs.team_id
         left join team_game_stats opp on opp.game_id = tgs.game_id and opp.team_id <> tgs.team_id
         where g.season_year = ${season}
@@ -204,7 +205,7 @@ async function loadPlayerLeaderboard(
           select t.team_id, t.code, t.name
           from player_game_stats pgs2
           join games g2 on g2.game_id = pgs2.game_id
-          join teams t on t.team_id = pgs2.team_id
+          join teams t on t.team_id = ${canonicalTeamIdExpression(sql`pgs2.team_id`, sql`g2.season_year`)}
           where pgs2.player_id = p.player_id and g2.season_year = ${season}
           group by t.team_id, t.code, t.name
           order by count(*) desc
@@ -343,8 +344,8 @@ export async function gameRowQuery(
         g.home_score::int as home_score,
         g.away_score::int as away_score
       from games g
-      join teams hc on hc.team_id = g.home_team_id
-      join teams ac on ac.team_id = g.away_team_id
+      join teams hc on hc.team_id = ${canonicalTeamIdExpression(sql`g.home_team_id`, sql`g.season_year`)}
+      join teams ac on ac.team_id = ${canonicalTeamIdExpression(sql`g.away_team_id`, sql`g.season_year`)}
       where ${where}
       order by ${orderBy}
       limit ${limit}
@@ -356,8 +357,8 @@ export async function gameRowQuery(
     weekNo: int(r.week_no),
     gameDate: r.game_date,
     venue: str(r.venue),
-    homeTeamId: int(r.home_team_id) ?? 0,
-    awayTeamId: int(r.away_team_id) ?? 0,
+    homeTeamId: canonicalTeamId(int(r.home_team_id) ?? 0, int(r.season_year) ?? undefined),
+    awayTeamId: canonicalTeamId(int(r.away_team_id) ?? 0, int(r.season_year) ?? undefined),
     homeCode: r.home_code,
     awayCode: r.away_code,
     homeName: str(r.home_name),

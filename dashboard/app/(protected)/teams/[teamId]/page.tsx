@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { resolveSeasonParam } from "@/lib/server-utils";
 import { idParam } from "@/lib/params";
 import { teamDetailLoaderDb } from "@/lib/db";
+import { canonicalTeamId } from "@/lib/db/team-identity";
 import { TeamDetailClient } from "./team-detail-client";
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ teamId: string }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
@@ -28,7 +29,21 @@ export default async function TeamDetailPage({
   if (!parsed.success) notFound();
 
   const season = await resolveSeasonParam(sp.season);
-  const data = await teamDetailLoaderDb.loadTeamDetail(parsed.data, season);
+  const canonicalId = canonicalTeamId(parsed.data, season);
+  if (canonicalId !== parsed.data) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(sp)) {
+      if (Array.isArray(value)) {
+        for (const item of value) query.append(key, item);
+      } else if (value !== undefined) {
+        query.set(key, value);
+      }
+    }
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    redirect(`/teams/${canonicalId}${suffix}`);
+  }
+
+  const data = await teamDetailLoaderDb.loadTeamDetail(canonicalId, season);
   if (!data) notFound();
 
   return (

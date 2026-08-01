@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { run } from "../client";
 import { countRows, int, num, str } from "./helpers";
 import type { LineupPlayer, LineupStintRow, LineupSummaryRow, PageResult } from "../types";
+import { canonicalTeamIdExpression, teamIdMatches } from "../team-identity";
 
 // Issues that affect lineup analysis specifically are scoped by report+team+game.
 
@@ -28,7 +29,7 @@ export async function getLineupSummaries(
 ): Promise<PageResult<LineupSummaryRow>> {
   const conditions = [sql`true`];
   if (opts.season) conditions.push(sql`g.season_year = ${opts.season}`);
-  if (opts.team) conditions.push(sql`ls.team_id = ${opts.team}`);
+  if (opts.team) conditions.push(teamIdMatches(sql`ls.team_id`, opts.team, opts.season));
   if (opts.minDuration !== undefined)
     conditions.push(sql`ls.duration_seconds >= ${opts.minDuration}`);
   if (opts.review === "exclude") {
@@ -75,7 +76,7 @@ export async function getLineupSummaries(
       select
         ls.lineup_summary_id::int as lineup_summary_id,
         ls.game_id::int as game_id,
-        ls.team_id::int as team_id,
+        ${canonicalTeamIdExpression(sql`ls.team_id`, sql`g.season_year`)}::int as team_id,
         t.code as team_code, t.name as team_name,
         g.game_date::text as game_date,
         ls.lineup_index::int as lineup_index,
@@ -84,7 +85,7 @@ export async function getLineupSummaries(
         ls.rebounds, ls.steals, ls.turnovers, ls.assists
       from lineup_summaries ls
       join games g on g.game_id = ls.game_id
-      join teams t on t.team_id = ls.team_id
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`ls.team_id`, sql`g.season_year`)}
       where ${where}
       order by ${orderBy}
       limit ${opts.pageSize} offset ${offset}
@@ -148,14 +149,15 @@ export async function getGameLineupStints(gameId: number): Promise<LineupStintRo
     sql`
       select
         lst.stint_id::int as stint_id, lst.game_id::int as game_id,
-        lst.team_id::int as team_id, t.code as team_code,
+        ${canonicalTeamIdExpression(sql`lst.team_id`, sql`g.season_year`)}::int as team_id, t.code as team_code,
         lst.stint_index::int as stint_index,
         lst.start_period::int as start_period, lst.start_clock,
         lst.end_period::int as end_period, lst.end_clock,
         lst.duration_seconds, lst.points_for, lst.points_against, lst.plus_minus,
         lst.is_starting_lineup
       from lineup_stints lst
-      join teams t on t.team_id = lst.team_id
+      join games g on g.game_id = lst.game_id
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`lst.team_id`, sql`g.season_year`)}
       where lst.game_id = ${gameId}
       order by lst.team_id, lst.stint_index
     `
@@ -210,7 +212,7 @@ export async function getGameLineupSummaries(
       select
         ls.lineup_summary_id::int as lineup_summary_id,
         ls.game_id::int as game_id,
-        ls.team_id::int as team_id,
+        ${canonicalTeamIdExpression(sql`ls.team_id`, sql`g.season_year`)}::int as team_id,
         t.code as team_code,
         t.name as team_name,
         ls.lineup_index::int as lineup_index,
@@ -224,7 +226,8 @@ export async function getGameLineupSummaries(
         ls.turnovers,
         ls.assists
       from lineup_summaries ls
-      join teams t on t.team_id = ls.team_id
+      join games g on g.game_id = ls.game_id
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`ls.team_id`, sql`g.season_year`)}
       where ls.game_id = ${gameId}
       order by ls.team_id, ls.lineup_index
     `

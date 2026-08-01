@@ -5,6 +5,11 @@ import { int, num, str } from "./helpers";
 import { gameRowQuery } from "./overview";
 import { excludeShotAreaReview } from "./review-scope";
 import type { ReviewMode } from "@/lib/review";
+import {
+  canonicalTeamId,
+  canonicalTeamIdExpression,
+  teamIdMatches,
+} from "../team-identity";
 import type {
   GameRow,
   PlayerLeaderRow,
@@ -20,11 +25,12 @@ export async function getTeamProfile(
   teamId: number,
   season?: number
 ): Promise<TeamProfile | null> {
+  const canonicalId = canonicalTeamId(teamId, season);
   const team = await run<{
     team_id: unknown;
     code: string;
     name: string | null;
-  }[]>(sql`select team_id::int as team_id, code, name from teams where team_id = ${teamId} limit 1`);
+  }[]>(sql`select team_id::int as team_id, code, name from teams where team_id = ${canonicalId} limit 1`);
   if (!team[0]) return null;
 
   const meta = await run<{
@@ -40,7 +46,7 @@ export async function getTeamProfile(
       from team_game_stats tgs
       join games g on g.game_id = tgs.game_id
       left join team_game_stats opp on opp.game_id = tgs.game_id and opp.team_id <> tgs.team_id
-      where tgs.team_id = ${teamId}
+      where ${canonicalTeamIdExpression(sql`tgs.team_id`, sql`g.season_year`)} = ${canonicalId}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
     `
   );
@@ -52,7 +58,7 @@ export async function getTeamProfile(
       from team_game_stats tgs
       join games g on g.game_id = tgs.game_id
       join seasons s on s.season_year = g.season_year
-      where tgs.team_id = ${teamId}
+      where ${canonicalTeamIdExpression(sql`tgs.team_id`, sql`g.season_year`)} = ${canonicalId}
       order by season_year desc
     `
   );
@@ -77,9 +83,11 @@ export async function getTeamGames(
   season?: number,
   limit = 50
 ): Promise<GameRow[]> {
+  const canonicalId = canonicalTeamId(teamId, season);
+  const gameTeamScope = sql`(${teamIdMatches(sql`g.home_team_id`, canonicalId, season)} or ${teamIdMatches(sql`g.away_team_id`, canonicalId, season)})`;
   const where = season
-    ? sql`(g.home_team_id = ${teamId} or g.away_team_id = ${teamId}) and g.season_year = ${season}`
-    : sql`(g.home_team_id = ${teamId} or g.away_team_id = ${teamId})`;
+    ? sql`${gameTeamScope} and g.season_year = ${season}`
+    : gameTeamScope;
   return gameRowQuery(where, sql`g.game_date desc, g.game_id desc`, sql`${limit}`);
 }
 
@@ -88,6 +96,7 @@ export async function getTeamTrend(
   season?: number,
   limit = 30
 ): Promise<TeamTrendPoint[]> {
+  const canonicalId = canonicalTeamId(teamId, season);
   const rows = await run<{
     game_id: unknown;
     game_date: string | null;
@@ -117,9 +126,9 @@ export async function getTeamTrend(
       from team_game_stats tgs
       join games g on g.game_id = tgs.game_id
       join team_game_stats opp on opp.game_id = tgs.game_id and opp.team_id <> tgs.team_id
-      join teams opp_t on opp_t.team_id = opp.team_id
+      join teams opp_t on opp_t.team_id = ${canonicalTeamIdExpression(sql`opp.team_id`, sql`g.season_year`)}
       left join team_game_metrics tgm on tgm.game_id = tgs.game_id and tgm.team_id = tgs.team_id
-      where tgs.team_id = ${teamId}
+      where ${teamIdMatches(sql`tgs.team_id`, canonicalId, season)}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       order by g.game_date desc, g.game_id desc
       limit ${limit}
@@ -145,6 +154,7 @@ export async function getTeamShotProfile(
   season?: number,
   review: ReviewMode = "exclude"
 ): Promise<TeamShotProfile[]> {
+  const canonicalId = canonicalTeamId(teamId, season);
   const rows = await run<{
     area_name: string | null;
     attempts: unknown;
@@ -160,7 +170,7 @@ export async function getTeamShotProfile(
       from shots s
       join games g on g.game_id = s.game_id
       join teams t on t.team_id = s.team_id
-      where s.team_id = ${teamId} and s.court_x_meters is not null
+      where ${teamIdMatches(sql`s.team_id`, canonicalId, season)} and s.court_x_meters is not null
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${excludeShotAreaReview(sql`s.report_id`, sql`t.code`, review)}
       group by s.area_name
@@ -184,6 +194,7 @@ export async function getTeamSeasonSummary(
   teamId: number,
   season?: number
 ): Promise<TeamSeasonSummary> {
+  const canonicalId = canonicalTeamId(teamId, season);
   const rows = await run<{
     points_for: unknown;
     points_against: unknown;
@@ -208,7 +219,7 @@ export async function getTeamSeasonSummary(
       join games g on g.game_id = tgs.game_id
       join team_game_stats opp on opp.game_id = tgs.game_id and opp.team_id <> tgs.team_id
       left join team_game_metrics tgm on tgm.game_id = tgs.game_id and tgm.team_id = tgs.team_id
-      where tgs.team_id = ${teamId}
+      where ${teamIdMatches(sql`tgs.team_id`, canonicalId, season)}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
     `
   );
@@ -230,6 +241,7 @@ export async function getTeamTopPlayers(
   season?: number,
   limit = 12
 ): Promise<PlayerLeaderRow[]> {
+  const canonicalId = canonicalTeamId(teamId, season);
   const rows = await run<{
     player_id: unknown;
     display_name: string;
@@ -262,8 +274,8 @@ export async function getTeamTopPlayers(
       from player_game_stats pgs
       join games g on g.game_id = pgs.game_id
       join players p on p.player_id = pgs.player_id
-      join teams t on t.team_id = pgs.team_id
-      where pgs.team_id = ${teamId} and pgs.did_play = true
+      join teams t on t.team_id = ${canonicalTeamIdExpression(sql`pgs.team_id`, sql`g.season_year`)}
+      where ${teamIdMatches(sql`pgs.team_id`, canonicalId, season)} and pgs.did_play = true
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       group by p.player_id, p.display_name, t.code, t.name
       order by avg(pgs.points) desc nulls last
@@ -273,7 +285,7 @@ export async function getTeamTopPlayers(
   return rows.map((row) => ({
     playerId: int(row.player_id) ?? 0,
     displayName: row.display_name,
-    teamId: teamId,
+    teamId: canonicalId,
     teamCode: row.team_code,
     teamName: str(row.team_name),
     gamesPlayed: int(row.games_played) ?? 0,
@@ -289,6 +301,7 @@ export async function getTeamTopPlayers(
 }
 
 export async function getTeamRoster(teamId: number, season?: number): Promise<TeamRosterRow[]> {
+  const canonicalId = canonicalTeamId(teamId, season);
   const rows = await run<{
     player_id: unknown;
     display_name: string;
@@ -316,7 +329,7 @@ export async function getTeamRoster(teamId: number, season?: number): Promise<Te
       from game_rosters gr
       join players p on p.player_id = gr.player_id
       join games g on g.game_id = gr.game_id
-      where gr.team_id = ${teamId}
+      where ${teamIdMatches(sql`gr.team_id`, canonicalId, season)}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       order by gr.player_id, g.game_date desc
     `
