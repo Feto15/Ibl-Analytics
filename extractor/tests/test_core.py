@@ -1,8 +1,12 @@
 from pathlib import Path
 import unittest
 
-from ibl_extract.core import classify, path_metadata
-from ibl_extract.parsers import player_evaluation, stats_line
+from ibl_extract.core import (
+    canonicalize_play_by_play_reports,
+    classify,
+    path_metadata,
+)
+from ibl_extract.parsers import play_by_play, player_evaluation, stats_line
 from ibl_extract.shot_detection import detect_markers, validation_record
 from ibl_extract.court import (
     area_name,
@@ -21,6 +25,90 @@ class CoreTest(unittest.TestCase):
         )
         self.assertEqual(result["source_game_key"], "2025:w1:g1:RSB:KBS")
 
+    def test_home_away_2026_path(self):
+        result = path_metadata(
+            Path(
+                "/data/HOME AWAY 2026/WEEK 12/RABU/"
+                "GAME 1 SWS VS KBS/FIBA Box Score SWS vs KBS Q4.pdf"
+            )
+        )
+
+        self.assertEqual(result["season_year"], 2026)
+        self.assertEqual(result["source_game_key"], "2026:w12:g1:SWS:KBS")
+        self.assertFalse(result["team_code_mismatch"])
+
+    def test_filename_team_codes_override_folder_typo(self):
+        result = path_metadata(
+            Path(
+                "/data/HOME AWAY 2026/WEEK 10/SABTU/"
+                "GAME 2 - SMB VS RSB/Line Up Analysis SMP vs RSB.pdf"
+            )
+        )
+
+        self.assertEqual(result["home_team_code"], "SMP")
+        self.assertEqual(result["away_team_code"], "RSB")
+        self.assertEqual(result["source_game_key"], "2026:w10:g2:SMP:RSB")
+        self.assertTrue(result["team_code_mismatch"])
+        self.assertEqual(result["folder_home_team_code"], "SMB")
+
+    def test_playoff_path_without_week_has_stable_key(self):
+        result = path_metadata(
+            Path(
+                "/data/HOME AWAY 2026/FINAL/GAME 1/"
+                "FIBA Box Score PJB vs BHB 19 June OT.pdf"
+            )
+        )
+
+        self.assertEqual(result["season_year"], 2026)
+        self.assertEqual(result["home_team_code"], "PJB")
+        self.assertEqual(result["away_team_code"], "BHB")
+        self.assertEqual(result["source_game_key"], "2026:final-game-1")
+
+    def test_root_season_wins_over_nested_folder_typo(self):
+        result = path_metadata(
+            Path(
+                "/data/HOME AWAY 2026/WEEK 6/SABTU 14 FEBRUARI 2024/"
+                "GAME 1 SMP VS KBS/Player Evaluation SMP vs KBS.pdf"
+            )
+        )
+
+        self.assertEqual(result["season_year"], 2026)
+
+    def test_canonicalizes_partial_play_by_play_report(self):
+        partial = {
+            "report_type": "play_by_play",
+            "parse_status": "parsed",
+            "source_filename": "Play by Play AAA vs BBB (1).pdf",
+            "source_path": "/game/Play by Play AAA vs BBB (1).pdf",
+            "source_sha256": "partial",
+            "page_count": 2,
+            "text_chars": 100,
+            "game": {"source_game_key": "2026:w1:g1:AAA:BBB"},
+            "play_by_play_events": [{"event_index": 1}],
+        }
+        complete = {
+            "report_type": "play_by_play",
+            "parse_status": "parsed",
+            "source_filename": "Play by Play AAA vs BBB.pdf",
+            "source_path": "/game/Play by Play AAA vs BBB.pdf",
+            "source_sha256": "complete",
+            "page_count": 10,
+            "text_chars": 1000,
+            "game": {"source_game_key": "2026:w1:g1:AAA:BBB"},
+            "play_by_play_events": [
+                {"event_index": 1},
+                {"event_index": 2},
+            ],
+        }
+
+        count = canonicalize_play_by_play_reports([partial, complete])
+
+        self.assertEqual(count, 1)
+        self.assertEqual(complete["parse_status"], "parsed")
+        self.assertEqual(partial["parse_status"], "duplicate")
+        self.assertEqual(partial["duplicate_of_source_sha256"], "complete")
+        self.assertEqual(partial["play_by_play_events"], [])
+
     def test_classification(self):
         result = classify(Path("FIBA Box Score RSB vs KBS Q4.pdf"))
         self.assertEqual(result["report_type"], "box_score")
@@ -29,10 +117,14 @@ class CoreTest(unittest.TestCase):
     def test_classification_handles_compact_q4_and_full_game(self):
         compact = classify(Path("FIBA Box Score SWS vs DUB 04 Mayq4.pdf"))
         full = classify(Path("FIBA Box Score DUB vs SWS FULL GAME.pdf"))
+        implicit_final = classify(Path("FIBA Box Score BHB vs HTJ 15 March.pdf"))
+        compact_overtime = classify(Path("FIBA Box Score SMP vs RSB OT1.pdf"))
 
         self.assertEqual(compact["report_period"], 4)
         self.assertEqual(full["report_period"], 4)
         self.assertEqual(full["report_scope"], "full")
+        self.assertEqual(implicit_final["report_period"], 4)
+        self.assertEqual(compact_overtime["report_period"], 5)
 
     def test_stats(self):
         result = stats_line(
@@ -41,6 +133,14 @@ class CoreTest(unittest.TestCase):
         )
         self.assertEqual(result["points"], 76)
         self.assertEqual(result["total_rebounds"], 47)
+
+    def test_play_by_play_recognizes_overtime_period(self):
+        events = play_by_play(
+            "Quarter 4\n00:01 79-79 0 Timeout Full\n"
+            "Overtime 1\n04:59 79-81 -2 1 PLAYER 2pt FG made"
+        )
+
+        self.assertEqual([event["period_no"] for event in events], [4, 5])
 
     def test_detects_made_and_missed_markers(self):
         image = Image.new("RGBA", (480, 430), (0, 0, 0, 0))

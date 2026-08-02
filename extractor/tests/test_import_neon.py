@@ -1,6 +1,7 @@
 import unittest
 
 from import_neon import (
+    build_review_validations,
     prepare_advanced_rows,
     validation_report_scope,
 )
@@ -85,6 +86,59 @@ class ImportNeonTest(unittest.TestCase):
         )
 
         self.assertEqual(scope, [26, 27])
+
+    def test_review_validations_include_shots_and_missing_metrics(self):
+        manifest = [
+            {
+                "source_sha256": "game-a-report",
+                "source_path": "/game-a.pdf",
+                "report_type": "box_score",
+                "report_period": 4,
+                "team_stats": [{}, {}],
+                "game": {"source_game_key": "game-a"},
+            },
+            {
+                "source_sha256": "game-b-report",
+                "source_path": "/game-b.pdf",
+                "report_type": "box_score",
+                "report_period": 4,
+                "team_stats": [],
+                "game": {"source_game_key": "game-b"},
+            },
+        ]
+        shot_validations = [
+            {
+                "source_sha256": "game-a-report",
+                "source_path": "/game-a.pdf",
+                "source_game_key": "game-a",
+                "player_key": "game-a:AAA:1:alpha",
+                "status": "needs_review",
+            }
+        ]
+        team_metrics = [
+            {"source_game_key": "game-a", "team_code": "AAA"},
+            {"source_game_key": "game-a", "team_code": "BBB"},
+        ]
+
+        validations = build_review_validations(
+            manifest, [], shot_validations, team_metrics
+        )
+
+        shot_issue = next(
+            row for row in validations
+            if row["rule_code"] == "shot_marker_count_mismatch"
+        )
+        self.assertEqual(shot_issue["status"], "needs_review")
+        metric_issues = {
+            row["source_game_key"]: row
+            for row in validations
+            if row["rule_code"] == "team_metrics_unavailable"
+        }
+        self.assertEqual(metric_issues["game-a"]["status"], "passed")
+        self.assertEqual(metric_issues["game-b"]["status"], "needs_review")
+        self.assertEqual(
+            metric_issues["game-b"]["source_sha256"], "game-b-report"
+        )
 
 
 if __name__ == "__main__":

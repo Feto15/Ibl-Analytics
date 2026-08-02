@@ -61,7 +61,10 @@ def main() -> int:
                         str(player["normalized_name"]),
                     )
                 ] = player
-        elif report.get("report_type") == "play_by_play":
+        elif (
+            report.get("report_type") == "play_by_play"
+            and report.get("parse_status") == "parsed"
+        ):
             pbp_reports.append(report)
 
     validation_by_player = {

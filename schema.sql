@@ -69,11 +69,20 @@ create table if not exists reports (
   text_chars integer,
   parser_version text not null,
   parse_status text not null
-    check (parse_status in ('parsed', 'partial', 'raw_only', 'failed')),
+    check (parse_status in ('parsed', 'partial', 'raw_only', 'failed', 'duplicate')),
   raw_payload jsonb,
   error_message text,
   extracted_at timestamptz not null default now()
 );
+
+alter table reports
+  drop constraint if exists reports_parse_status_check;
+
+alter table reports
+  add constraint reports_parse_status_check
+  check (
+    parse_status in ('parsed', 'partial', 'raw_only', 'failed', 'duplicate')
+  );
 
 create index if not exists reports_game_type_idx
   on reports(game_id, report_type);

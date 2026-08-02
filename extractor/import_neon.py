@@ -104,6 +104,66 @@ def flatten_advanced(
     return counts
 
 
+def build_review_validations(
+    manifest: list[dict[str, Any]],
+    advanced_validations: list[dict[str, Any]],
+    shot_validations: list[dict[str, Any]],
+    team_metrics: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    validations = list(advanced_validations)
+    for validation in shot_validations:
+        row = dict(validation)
+        row.setdefault("severity", "warning")
+        row["rule_code"] = "shot_marker_count_mismatch"
+        row["message"] = (
+            "Shot marker count does not match the player's box-score attempts."
+            if row.get("status") == "needs_review"
+            else "Shot marker count matches the player's box-score attempts."
+        )
+        validations.append(row)
+
+    if not team_metrics:
+        return validations
+
+    metric_counts = Counter(
+        row.get("source_game_key") for row in team_metrics
+    )
+    reports_by_game: dict[str, list[dict[str, Any]]] = {}
+    for report in manifest:
+        game_key = (report.get("game") or {}).get("source_game_key")
+        if game_key:
+            reports_by_game.setdefault(str(game_key), []).append(report)
+
+    for game_key, reports in reports_by_game.items():
+        source = max(
+            reports,
+            key=lambda report: (
+                report.get("report_type") == "box_score",
+                int(report.get("report_period") or 0),
+                len(report.get("team_stats") or []),
+                str(report.get("source_path") or ""),
+            ),
+        )
+        available = metric_counts[game_key] >= 2
+        validations.append(
+            {
+                "source_path": source.get("source_path"),
+                "source_sha256": source.get("source_sha256"),
+                "source_game_key": game_key,
+                "status": "passed" if available else "needs_review",
+                "severity": "warning",
+                "rule_code": "team_metrics_unavailable",
+                "message": (
+                    "Team metrics are available for both teams."
+                    if available
+                    else "Team metrics could not be calculated for both teams."
+                ),
+                "team_metric_rows": metric_counts[game_key],
+            }
+        )
+    return validations
+
+
 def validate_inputs(
     manifest: list[dict[str, Any]],
     shots: list[dict[str, Any]],
@@ -111,7 +171,15 @@ def validate_inputs(
     advanced_validations: list[dict[str, Any]],
     player_metrics: list[dict[str, Any]],
     team_metrics: list[dict[str, Any]],
+    shot_validations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    shot_validations = shot_validations or []
+    review_validations = build_review_validations(
+        manifest,
+        advanced_validations,
+        shot_validations,
+        team_metrics,
+    )
     games = canonical_games(manifest)
     known_games = set(games)
     known_reports = {
@@ -143,6 +211,10 @@ def validate_inputs(
             validation.get("source_sha256") not in known_reports
             for validation in advanced_validations
         ),
+        "shot_validations_unknown_report": sum(
+            validation.get("source_sha256") not in known_reports
+            for validation in shot_validations
+        ),
         "player_metrics_unknown_game": sum(
             row.get("source_game_key") not in known_games
             for row in player_metrics
@@ -163,9 +235,14 @@ def validate_inputs(
             "advanced_reports": len(advanced),
             **flatten_advanced(advanced),
             "advanced_validations": len(advanced_validations),
+            "shot_validations": len(shot_validations),
+            "metric_validations": sum(
+                row.get("rule_code") == "team_metrics_unavailable"
+                for row in review_validations
+            ),
             "validation_issues": sum(
                 row.get("status") == "needs_review"
-                for row in advanced_validations
+                for row in review_validations
             ),
             "player_metrics": len(player_metrics),
             "team_metrics": len(team_metrics),
@@ -990,7 +1067,10 @@ def import_data(
 
     event_rows = []
     for report in manifest:
-        if report.get("report_type") != "play_by_play":
+        if (
+            report.get("report_type") != "play_by_play"
+            or report.get("parse_status") != "parsed"
+        ):
             continue
         game_key = report["game"]["source_game_key"]
         for event in report.get("play_by_play_events") or []:
@@ -1174,6 +1254,8 @@ def import_data(
         "plus_minus_crosscheck_unavailable",
         "plus_minus_value_mismatch",
         "shot_area_box_score_mismatch",
+        "shot_marker_count_mismatch",
+        "team_metrics_unavailable",
     )
     validation_report_ids = validation_report_scope(
         advanced_validations, report_ids
@@ -1279,6 +1361,7 @@ def main() -> int:
     parser.add_argument("--shots", type=Path)
     parser.add_argument("--advanced", type=Path)
     parser.add_argument("--advanced-validations", type=Path)
+    parser.add_argument("--shot-validations", type=Path)
     parser.add_argument("--player-metrics", type=Path)
     parser.add_argument("--team-metrics", type=Path)
     parser.add_argument("--schema", type=Path)
@@ -1290,6 +1373,7 @@ def main() -> int:
     shots = read_jsonl(args.shots)
     advanced = read_jsonl(args.advanced)
     advanced_validations = read_jsonl(args.advanced_validations)
+    shot_validations = read_jsonl(args.shot_validations)
     player_metrics = read_jsonl(args.player_metrics)
     team_metrics = read_jsonl(args.team_metrics)
     validation = validate_inputs(
@@ -1299,6 +1383,7 @@ def main() -> int:
         advanced_validations,
         player_metrics,
         team_metrics,
+        shot_validations,
     )
     if validation["status"] != "passed" or args.dry_run:
         print(json.dumps(validation, ensure_ascii=False, indent=2))
@@ -1316,12 +1401,18 @@ def main() -> int:
             "Install requirements.txt before importing to Neon."
         ) from error
     with psycopg.connect(database_url) as connection:
+        review_validations = build_review_validations(
+            manifest,
+            advanced_validations,
+            shot_validations,
+            team_metrics,
+        )
         summary = import_data(
             connection,
             manifest,
             shots,
             advanced,
-            advanced_validations,
+            review_validations,
             player_metrics,
             team_metrics,
             args.schema,

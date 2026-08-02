@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -25,10 +26,19 @@ def main() -> int:
     summary = {
         "pdf_total": len(records),
         "game_folders": len({str(Path(r["path"]).parent) for r in records}),
+        "unique_game_keys": len(
+            {r["source_game_key"] for r in records if r["source_game_key"]}
+        ),
+        "missing_game_keys": sum(not r["source_game_key"] for r in records),
         "by_season": dict(Counter(r["season_year"] for r in records)),
         "by_report_type": dict(Counter(r["report_type"] for r in records)),
         "unrecognized_team_paths": sum(
             not r["home_team_code"] or not r["away_team_code"] for r in records
+        ),
+        "team_code_mismatches": sum(r["team_code_mismatch"] for r in records),
+        "numbered_copy_candidates": sum(
+            bool(re.search(r"\(\d+\)$", Path(r["path"]).stem))
+            for r in records
         ),
         "unknown_report_types": sum(r["report_type"] == "unknown" for r in records),
     }
@@ -44,4 +54,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -180,6 +180,7 @@ python3 extractor/import_neon.py \
   --shots data/processed/shots-enriched/shots_enriched.jsonl \
   --advanced data/processed/advanced/advanced_reports.jsonl \
   --advanced-validations data/processed/advanced/advanced_validations.jsonl \
+  --shot-validations data/processed/shots/shot_validations.jsonl \
   --player-metrics data/processed/metrics/player_metrics.jsonl \
   --team-metrics data/processed/metrics/team_metrics.jsonl \
   --schema schema.sql \

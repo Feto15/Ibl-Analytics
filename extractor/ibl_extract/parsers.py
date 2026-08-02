@@ -126,6 +126,11 @@ def play_by_play(text: str) -> list[dict[str, Any]]:
             period = int(quarter.group(1))
             pending = ""
             continue
+        overtime = re.fullmatch(r"Overtime(?:\s+(\d+))?", line, re.I)
+        if overtime:
+            period = 4 + int(overtime.group(1) or 1)
+            pending = ""
+            continue
         if not line or line.startswith(("--- PAGE", "IBL ", "Game Time ")):
             continue
         timed = re.match(r"^(\d{1,2}:\d{2})\s+(.+)$", line)

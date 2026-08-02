@@ -12,7 +12,12 @@ from typing import Any
 import pdfplumber
 
 from ibl_extract import __version__
-from ibl_extract.core import classify, header_metadata, path_metadata
+from ibl_extract.core import (
+    canonicalize_play_by_play_reports,
+    classify,
+    header_metadata,
+    path_metadata,
+)
 from ibl_extract.parsers import play_by_play, player_evaluation, team_totals
 
 
@@ -129,6 +134,25 @@ def main() -> int:
                 json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
             )
             print(f"[{index}/{len(pending_pdfs)}] {record['parse_status']}: {record['source_filename']}", file=sys.stderr)
+
+    pbp_duplicates = canonicalize_play_by_play_reports(records)
+    for record in records:
+        if record.get("parse_status") != "duplicate":
+            continue
+        raw_path = raw_dir / f"{record['source_sha256']}.json"
+        if not raw_path.exists():
+            continue
+        raw_record = json.loads(raw_path.read_text(encoding="utf-8"))
+        raw_record["parse_status"] = "duplicate"
+        raw_record["duplicate_of_source_sha256"] = record.get(
+            "duplicate_of_source_sha256"
+        )
+        raw_record["play_by_play_events"] = []
+        raw_path.write_text(
+            json.dumps(raw_record, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
     records.sort(key=lambda item: item["source_path"])
     with (args.output / "manifest.jsonl").open("w", encoding="utf-8") as stream:
         for record in records:
@@ -140,6 +164,8 @@ def main() -> int:
         "files_failed": failures,
         "parsed": sum(r["parse_status"] == "parsed" for r in records),
         "raw_only": sum(r["parse_status"] == "raw_only" for r in records),
+        "duplicate": sum(r["parse_status"] == "duplicate" for r in records),
+        "play_by_play_duplicates": pbp_duplicates,
     }
     (args.output / "summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
