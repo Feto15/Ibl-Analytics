@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { DataTable } from "@/components/ibl/data-table";
-import { SeasonFilter } from "@/components/ibl/season-filter";
 import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
@@ -74,7 +73,6 @@ export function TeamDetailClient({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <GamePhaseFilter value={phase} />
-          <SeasonFilter seasons={profile.seasons} />
         </div>
       </div>
 

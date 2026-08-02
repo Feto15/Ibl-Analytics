@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { PaginationBar } from "@/components/ibl/pagination-bar";
-import { SeasonFilter } from "@/components/ibl/season-filter";
 import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { ReviewBadge } from "@/components/ibl/badges";
 import { fmtDuration, fmtNum, fmtSigned } from "@/lib/format";
@@ -24,7 +23,7 @@ interface LineupsClientProps {
   phase: GamePhase;
 }
 
-export function LineupsClient({ data, pagination, seasons, sort, dir, review, phase }: LineupsClientProps) {
+export function LineupsClient({ data, pagination, sort, dir, review, phase }: LineupsClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -92,7 +91,7 @@ export function LineupsClient({ data, pagination, seasons, sort, dir, review, ph
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold tracking-tight">Lineup Summaries</h1>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground">Issues:</span>
             <Select value={review} onValueChange={handleReviewChange}>
@@ -106,7 +105,6 @@ export function LineupsClient({ data, pagination, seasons, sort, dir, review, ph
             </Select>
           </div>
           <GamePhaseFilter value={phase} />
-          <SeasonFilter seasons={seasons} />
         </div>
       </div>
 

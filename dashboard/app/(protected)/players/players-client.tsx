@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { PaginationBar } from "@/components/ibl/pagination-bar";
-import { SeasonFilter } from "@/components/ibl/season-filter";
 import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { EmptyState } from "@/components/ibl/states";
@@ -29,7 +28,6 @@ interface PlayersClientProps {
 export function PlayersClient({
   data,
   pagination,
-  seasons,
   teams,
   currentSeason,
   currentTeam,
@@ -145,7 +143,6 @@ export function PlayersClient({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <GamePhaseFilter value={phase} />
-          <SeasonFilter seasons={seasons} />
         </div>
       </div>
 

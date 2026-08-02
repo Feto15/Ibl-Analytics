@@ -20,7 +20,7 @@ export function ReviewFilter({ value }: { value: ReviewMode }) {
 
   return (
     <Select value={value} onValueChange={(next) => onChange(next as ReviewMode)}>
-      <SelectTrigger size="sm" className="h-8 w-[158px]" aria-label="Filter data review">
+      <SelectTrigger size="sm" className="h-8 w-[135px] shrink-0 sm:w-[158px]" aria-label="Filter data review">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

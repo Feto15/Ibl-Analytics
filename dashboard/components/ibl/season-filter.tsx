@@ -27,7 +27,7 @@ export function SeasonFilter({ seasons }: SeasonFilterProps) {
 
   return (
     <Select value={current} onValueChange={handleChange}>
-      <SelectTrigger size="sm" className="h-8 w-[150px]" aria-label="Filter musim">
+      <SelectTrigger size="sm" className="h-8 w-[105px] shrink-0 sm:w-[150px]" aria-label="Filter musim">
         <SelectValue placeholder="Musim" />
       </SelectTrigger>
       <SelectContent>

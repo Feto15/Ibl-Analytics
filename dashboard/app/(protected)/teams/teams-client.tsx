@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
-import { SeasonFilter } from "@/components/ibl/season-filter";
 import { ReviewFilter } from "@/components/ibl/review-filter";
 import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { fmtNum, fmtPct, fmtSigned } from "@/lib/format";
@@ -21,7 +20,7 @@ interface TeamsClientProps {
   dir: "asc" | "desc";
 }
 
-export function TeamsClient({ data, seasons, currentSeason, review, phase, sort, dir }: TeamsClientProps) {
+export function TeamsClient({ data, currentSeason, review, phase, sort, dir }: TeamsClientProps) {
   const phaseQuery = phase === "regular" ? "" : `&phase=${phase}`;
   const rankedRows = useMemo(
     () => data.map((row, index) => ({ row, rank: index + 1 })),
@@ -81,10 +80,9 @@ export function TeamsClient({ data, seasons, currentSeason, review, phase, sort,
             {gamePhaseLabel(phase)} {currentSeason} · {data.length} tim
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ReviewFilter value={review} />
           <GamePhaseFilter value={phase} />
-          <SeasonFilter seasons={seasons} />
         </div>
       </div>
 

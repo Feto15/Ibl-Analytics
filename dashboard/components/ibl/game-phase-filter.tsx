@@ -23,7 +23,7 @@ export function GamePhaseFilter({ value }: { value: GamePhase }) {
   return (
     <div
       aria-label="Filter fase pertandingan"
-      className="grid grid-cols-3 rounded-md border bg-muted/40 p-0.5 text-xs"
+      className="grid shrink-0 grid-cols-3 rounded-md border bg-muted/40 p-0.5 text-xs"
       role="group"
     >
       {PHASE_OPTIONS.map((phase) => (
@@ -33,13 +33,14 @@ export function GamePhaseFilter({ value }: { value: GamePhase }) {
           aria-pressed={value === phase}
           onClick={() => updatePhase(phase)}
           className={cn(
-            "h-7 whitespace-nowrap rounded px-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "h-7 whitespace-nowrap rounded px-1.5 sm:px-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             value === phase
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {GAME_PHASE_LABELS[phase]}
+          <span className="hidden sm:inline">{GAME_PHASE_LABELS[phase]}</span>
+          <span className="sm:hidden">{phase === "regular" ? "Reguler" : GAME_PHASE_LABELS[phase]}</span>
         </button>
       ))}
     </div>

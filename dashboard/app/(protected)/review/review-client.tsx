@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { PaginationBar } from "@/components/ibl/pagination-bar";
-import { SeasonFilter } from "@/components/ibl/season-filter";
 import { SeverityBadge } from "@/components/ibl/badges";
 import type { Pagination, SeasonOption, ValidationIssueRow } from "@/lib/db/types";
 
@@ -37,7 +36,6 @@ export function ReviewClient({
   data,
   pagination,
   facets,
-  seasons,
   sort,
   dir,
   filters,
@@ -103,9 +101,8 @@ export function ReviewClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Validation Issues</h1>
-        <SeasonFilter seasons={seasons} />
       </div>
 
       <div className="flex flex-col items-start gap-6 md:flex-row">
