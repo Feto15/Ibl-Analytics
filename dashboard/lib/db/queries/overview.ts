@@ -5,7 +5,9 @@ import { cached } from "../cache";
 import { int, num, str } from "./helpers";
 import { excludeBoxScoreReview } from "./review-scope";
 import type { ReviewMode } from "@/lib/review";
+import type { GamePhase } from "@/lib/game-phase";
 import { canonicalTeamId, canonicalTeamIdExpression } from "../team-identity";
+import { gamePhaseCondition, gamePhaseExpression } from "../game-phase";
 import type {
   GameRow,
   GameTrendPoint,
@@ -16,7 +18,8 @@ import type {
 
 async function loadOverviewKpis(
   season: number,
-  review: ReviewMode
+  review: ReviewMode,
+  phase: GamePhase
 ): Promise<OverviewKpis> {
     const rows = await run<{
       games: unknown;
@@ -28,7 +31,8 @@ async function loadOverviewKpis(
     }[]>(
       sql`
         select
-          (select count(*)::int from games where season_year = ${season}) as games,
+          (select count(*)::int from games g where g.season_year = ${season}
+            and ${gamePhaseCondition(sql`g.source_game_key`, phase)}) as games,
           avg(tgs.points)::float8 as avg_score,
           avg(tgm.pace)::float8 as pace,
           (100.0 * sum(tgs.fg_made + 0.5 * tgs.three_pt_made)
@@ -42,6 +46,7 @@ async function loadOverviewKpis(
         join team_game_metrics tgm on tgm.game_id = tgs.game_id and tgm.team_id = tgs.team_id
         left join team_game_stats opp on opp.game_id = tgs.game_id and opp.team_id <> tgs.team_id
         where g.season_year = ${season}
+          and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
           and ${excludeBoxScoreReview(sql`g.game_id`, review)}
       `
     );
@@ -74,16 +79,21 @@ async function loadOverviewKpis(
 
 const getCachedOverviewKpis = cached(loadOverviewKpis.bind(null), ["ibl-overview-kpis"]);
 
-export function getOverviewKpis(season: number, review: ReviewMode = "exclude") {
+export function getOverviewKpis(
+  season: number,
+  review: ReviewMode = "exclude",
+  phase: GamePhase = "regular"
+) {
   // Review-dependent aggregates must remain fresh after a new import.
   return review === "include"
-    ? getCachedOverviewKpis(season, review)
-    : loadOverviewKpis(season, review);
+    ? getCachedOverviewKpis(season, review, phase)
+    : loadOverviewKpis(season, review, phase);
 }
 
 async function loadStandings(
   season: number,
-  review: ReviewMode
+  review: ReviewMode,
+  phase: GamePhase
 ): Promise<StandingRow[]> {
     const rows = await run<{
       team_id: unknown;
@@ -121,6 +131,7 @@ async function loadStandings(
         join team_game_metrics tgm on tgm.game_id = tgs.game_id and tgm.team_id = tgs.team_id
         left join team_game_stats opp on opp.game_id = tgs.game_id and opp.team_id <> tgs.team_id
         where g.season_year = ${season}
+          and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
           and ${excludeBoxScoreReview(sql`g.game_id`, review)}
         group by t.team_id, t.code, t.name
       `
@@ -155,16 +166,21 @@ async function loadStandings(
 
 const getCachedStandings = cached(loadStandings.bind(null), ["ibl-standings"]);
 
-export function getStandings(season: number, review: ReviewMode = "exclude") {
+export function getStandings(
+  season: number,
+  review: ReviewMode = "exclude",
+  phase: GamePhase = "regular"
+) {
   return review === "include"
-    ? getCachedStandings(season, review)
-    : loadStandings(season, review);
+    ? getCachedStandings(season, review, phase)
+    : loadStandings(season, review, phase);
 }
 
 async function loadPlayerLeaderboard(
   season: number,
   limit: number,
-  review: ReviewMode
+  review: ReviewMode,
+  phase: GamePhase
 ): Promise<PlayerLeaderRow[]> {
     const rows = await run<{
       player_id: unknown;
@@ -207,11 +223,13 @@ async function loadPlayerLeaderboard(
           join games g2 on g2.game_id = pgs2.game_id
           join teams t on t.team_id = ${canonicalTeamIdExpression(sql`pgs2.team_id`, sql`g2.season_year`)}
           where pgs2.player_id = p.player_id and g2.season_year = ${season}
+            and ${gamePhaseCondition(sql`g2.source_game_key`, phase)}
           group by t.team_id, t.code, t.name
           order by count(*) desc
           limit 1
         ) tm on true
         where g.season_year = ${season}
+          and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
           and pgs.did_play = true
           and ${excludeBoxScoreReview(sql`g.game_id`, review)}
         group by p.player_id, p.display_name, tm.team_id, tm.code, tm.name
@@ -245,16 +263,18 @@ const getCachedPlayerLeaderboard = cached(
 export function getPlayerLeaderboard(
   season: number,
   limit = 50,
-  review: ReviewMode = "exclude"
+  review: ReviewMode = "exclude",
+  phase: GamePhase = "regular"
 ) {
   return review === "include"
-    ? getCachedPlayerLeaderboard(season, limit, review)
-    : loadPlayerLeaderboard(season, limit, review);
+    ? getCachedPlayerLeaderboard(season, limit, review, phase)
+    : loadPlayerLeaderboard(season, limit, review, phase);
 }
 
 async function loadGameTrend(
   season: number,
-  review: ReviewMode
+  review: ReviewMode,
+  phase: GamePhase
 ): Promise<GameTrendPoint[]> {
     const rows = await run<{
       week_no: unknown;
@@ -273,6 +293,7 @@ async function loadGameTrend(
           select pace from team_game_metrics where game_id = g.game_id limit 1
         ) pm on true
         where g.season_year = ${season}
+          and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
           and g.week_no is not null
           and ${excludeBoxScoreReview(sql`g.game_id`, review)}
         group by g.week_no
@@ -288,19 +309,26 @@ async function loadGameTrend(
 
 const getCachedGameTrend = cached(loadGameTrend.bind(null), ["ibl-game-trend"]);
 
-export function getGameTrend(season: number, review: ReviewMode = "exclude") {
+export function getGameTrend(
+  season: number,
+  review: ReviewMode = "exclude",
+  phase: GamePhase = "regular"
+) {
   return review === "include"
-    ? getCachedGameTrend(season, review)
-    : loadGameTrend(season, review);
+    ? getCachedGameTrend(season, review, phase)
+    : loadGameTrend(season, review, phase);
 }
 
 export async function getRecentGames(
   season: number,
   limit = 8,
-  review: ReviewMode = "exclude"
+  review: ReviewMode = "exclude",
+  phase: GamePhase = "regular"
 ): Promise<GameRow[]> {
   const rows = await gameRowQuery(
-    sql`g.season_year = ${season} and ${excludeBoxScoreReview(sql`g.game_id`, review)}`,
+    sql`g.season_year = ${season}
+      and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
+      and ${excludeBoxScoreReview(sql`g.game_id`, review)}`,
     sql`g.game_date desc, g.game_id desc`,
     sql`${limit}`
   );
@@ -316,6 +344,7 @@ export async function gameRowQuery(
   const rows = await run<{
     game_id: unknown;
     season_year: unknown;
+    phase: string;
     week_no: unknown;
     game_date: string | null;
     venue: string | null;
@@ -332,6 +361,7 @@ export async function gameRowQuery(
       select
         g.game_id::int as game_id,
         g.season_year::int as season_year,
+        ${gamePhaseExpression(sql`g.source_game_key`)} as phase,
         g.week_no::int as week_no,
         g.game_date::text as game_date,
         g.venue,
@@ -354,6 +384,7 @@ export async function gameRowQuery(
   return rows.map((r) => ({
     gameId: int(r.game_id) ?? 0,
     seasonYear: int(r.season_year) ?? 0,
+    phase: r.phase === "playoffs" ? "playoffs" : "regular",
     weekNo: int(r.week_no),
     gameDate: r.game_date,
     venue: str(r.venue),

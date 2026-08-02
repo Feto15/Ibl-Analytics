@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 import { run } from "../client";
 import { int, num, str } from "./helpers";
 import { canonicalTeamIdExpression } from "../team-identity";
+import { gamePhaseCondition } from "../game-phase";
+import type { GamePhase } from "@/lib/game-phase";
 import type { ShotPoint } from "../types";
 
 export interface ShotChartFilters {
@@ -10,6 +12,7 @@ export interface ShotChartFilters {
   teamId?: number;
   playerId?: number;
   season?: number;
+  phase?: GamePhase;
   period?: number;
   result?: "made" | "missed";
   area?: string;
@@ -26,6 +29,7 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
   if (filters.teamId) conditions.push(sql`s.team_id = ${filters.teamId}`);
   if (filters.playerId) conditions.push(sql`s.player_id = ${filters.playerId}`);
   if (filters.season) conditions.push(sql`g.season_year = ${filters.season}`);
+  if (filters.phase) conditions.push(gamePhaseCondition(sql`g.source_game_key`, filters.phase));
   if (filters.period) conditions.push(sql`s.period_no = ${filters.period}`);
   if (filters.result === "made") conditions.push(sql`s.made = true`);
   if (filters.result === "missed") conditions.push(sql`s.made = false`);
@@ -92,8 +96,11 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
   }));
 }
 
-export async function getShotAreas(season?: number) {
-  const where = season ? sql`g.season_year = ${season}` : sql`true`;
+export async function getShotAreas(season?: number, phase?: GamePhase) {
+  const conditions = [sql`true`];
+  if (season) conditions.push(sql`g.season_year = ${season}`);
+  if (phase) conditions.push(gamePhaseCondition(sql`g.source_game_key`, phase));
+  const where = conditions.reduce((acc, condition) => sql`${acc} and ${condition}`);
   const rows = await run<{ area_name: string | null }[]>(
     sql`select distinct s.area_name from shots s join games g on g.game_id = s.game_id where ${where} and s.area_name is not null order by s.area_name`
   );
@@ -118,6 +125,7 @@ export async function getShotZoneStats(
   if (filters.teamId) conditions.push(sql`s.team_id = ${filters.teamId}`);
   if (filters.playerId) conditions.push(sql`s.player_id = ${filters.playerId}`);
   if (filters.season) conditions.push(sql`g.season_year = ${filters.season}`);
+  if (filters.phase) conditions.push(gamePhaseCondition(sql`g.source_game_key`, filters.phase));
   const where = conditions.reduce((acc, c) => sql`${acc} and ${c}`);
   const rows = await run<{
     area_name: string | null;

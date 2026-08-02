@@ -4,6 +4,8 @@ import { run } from "../client";
 import { countRows, int, num, str } from "./helpers";
 import type { LineupPlayer, LineupStintRow, LineupSummaryRow, PageResult } from "../types";
 import { canonicalTeamIdExpression, teamIdMatches } from "../team-identity";
+import { gamePhaseCondition } from "../game-phase";
+import type { GamePhase } from "@/lib/game-phase";
 
 // Issues that affect lineup analysis specifically are scoped by report+team+game.
 
@@ -22,6 +24,7 @@ export async function getLineupSummaries(
     sort: string;
     dir: "asc" | "desc";
     season?: number;
+    phase?: GamePhase;
     team?: number;
     minDuration?: number;
     review: "include" | "exclude";
@@ -29,6 +32,7 @@ export async function getLineupSummaries(
 ): Promise<PageResult<LineupSummaryRow>> {
   const conditions = [sql`true`];
   if (opts.season) conditions.push(sql`g.season_year = ${opts.season}`);
+  conditions.push(gamePhaseCondition(sql`g.source_game_key`, opts.phase));
   if (opts.team) conditions.push(teamIdMatches(sql`ls.team_id`, opts.team, opts.season));
   if (opts.minDuration !== undefined)
     conditions.push(sql`ls.duration_seconds >= ${opts.minDuration}`);

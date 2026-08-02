@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 import { run } from "../client";
 import { countRows, int, num, str } from "./helpers";
 import type { PageResult, PlayerLeaderRow } from "../types";
+import { gamePhaseCondition } from "../game-phase";
+import type { GamePhase } from "@/lib/game-phase";
 
 const SORT_MAP: Record<string, string> = {
   points: "agg.points",
@@ -22,12 +24,14 @@ export async function getPlayers(
     sort: string;
     dir: "asc" | "desc";
     season?: number;
+    phase?: GamePhase;
     team?: number;
     q?: string;
   }
 ): Promise<PageResult<PlayerLeaderRow>> {
   const conditions = [sql`pgs.did_play = true`];
   if (opts.season) conditions.push(sql`g.season_year = ${opts.season}`);
+  conditions.push(gamePhaseCondition(sql`g.source_game_key`, opts.phase));
   if (opts.team) conditions.push(sql`pgs.team_id = ${opts.team}`);
   if (opts.q) {
     conditions.push(

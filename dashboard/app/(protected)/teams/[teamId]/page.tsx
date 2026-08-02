@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { resolveSeasonParam } from "@/lib/server-utils";
+import { resolveGamePhaseParam, resolveSeasonParam } from "@/lib/server-utils";
 import { idParam } from "@/lib/params";
 import { teamDetailLoaderDb } from "@/lib/db";
 import { canonicalTeamId } from "@/lib/db/team-identity";
@@ -11,7 +11,8 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
   const parsed = idParam.safeParse(p.teamId);
   if (!parsed.success) return { title: "Not Found" };
   const season = await resolveSeasonParam(sp.season);
-  const data = await teamDetailLoaderDb.loadTeamDetail(parsed.data, season);
+  const phase = resolveGamePhaseParam(sp.phase);
+  const data = await teamDetailLoaderDb.loadTeamDetail(parsed.data, season, phase);
   if (!data) return { title: "Not Found" };
   return { title: `${data.profile.code} | IBL Analytics` };
 }
@@ -29,6 +30,7 @@ export default async function TeamDetailPage({
   if (!parsed.success) notFound();
 
   const season = await resolveSeasonParam(sp.season);
+  const phase = resolveGamePhaseParam(sp.phase);
   const canonicalId = canonicalTeamId(parsed.data, season);
   if (canonicalId !== parsed.data) {
     const query = new URLSearchParams();
@@ -43,7 +45,7 @@ export default async function TeamDetailPage({
     redirect(`/teams/${canonicalId}${suffix}`);
   }
 
-  const data = await teamDetailLoaderDb.loadTeamDetail(canonicalId, season);
+  const data = await teamDetailLoaderDb.loadTeamDetail(canonicalId, season, phase);
   if (!data) notFound();
 
   return (
@@ -51,6 +53,7 @@ export default async function TeamDetailPage({
       <TeamDetailClient
         {...data}
         currentSeason={season}
+        phase={phase}
       />
     </div>
   );

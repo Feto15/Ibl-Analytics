@@ -6,10 +6,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { PaginationBar } from "@/components/ibl/pagination-bar";
 import { SeasonFilter } from "@/components/ibl/season-filter";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { ReviewBadge } from "@/components/ibl/badges";
 import { fmtDuration, fmtNum, fmtSigned } from "@/lib/format";
 import type { LineupSummaryRow, Pagination, SeasonOption } from "@/lib/db/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { GamePhase } from "@/lib/game-phase";
 
 interface LineupsClientProps {
   data: LineupSummaryRow[];
@@ -19,9 +21,10 @@ interface LineupsClientProps {
   sort: string;
   dir: "asc" | "desc";
   review: "include" | "exclude";
+  phase: GamePhase;
 }
 
-export function LineupsClient({ data, pagination, seasons, sort, dir, review }: LineupsClientProps) {
+export function LineupsClient({ data, pagination, seasons, sort, dir, review, phase }: LineupsClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -102,6 +105,7 @@ export function LineupsClient({ data, pagination, seasons, sort, dir, review }: 
               </SelectContent>
             </Select>
           </div>
+          <GamePhaseFilter value={phase} />
           <SeasonFilter seasons={seasons} />
         </div>
       </div>

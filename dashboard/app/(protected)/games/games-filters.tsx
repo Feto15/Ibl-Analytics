@@ -4,6 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, X } from "lucide-react";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
+import type { GamePhase } from "@/lib/game-phase";
 
 interface Option {
   value: string;
@@ -16,12 +18,14 @@ export function GamesFilters({
   currentSeason,
   currentTeam,
   currentQuery,
+  currentPhase,
 }: {
   teams: Option[];
   seasons: Option[];
   currentSeason: string;
   currentTeam: string;
   currentQuery: string;
+  currentPhase: GamePhase;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -36,10 +40,20 @@ export function GamesFilters({
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  const activeCount = [currentSeason, currentTeam, currentQuery].filter(Boolean).length;
+  const reset = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    ["season", "team", "q", "phase"].forEach((key) => params.delete(key));
+    params.set("page", "1");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
+  const activeCount = [currentSeason, currentTeam, currentQuery, currentPhase !== "regular"].filter(Boolean).length;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <GamePhaseFilter value={currentPhase} />
+
       <Select
         value={currentSeason || "__all"}
         onValueChange={(v) => update("season", v === "__all" ? null : v)}
@@ -90,9 +104,7 @@ export function GamesFilters({
       {activeCount > 0 && (
         <button
           type="button"
-          onClick={() => {
-            ["season", "team", "q"].forEach((k) => update(k, null));
-          }}
+          onClick={reset}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground h-8 px-2"
         >
           <X className="size-3.5" />

@@ -4,8 +4,14 @@ import Link from "next/link";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { fmtDate } from "@/lib/format";
 import type { GameRow } from "@/lib/db/types";
+import { GamePhaseBadge } from "@/components/ibl/badges";
 
 const columns: SortableColumn<GameRow>[] = [
+  {
+    key: "phase",
+    header: "Fase",
+    cell: (g) => <GamePhaseBadge phase={g.phase} />,
+  },
   {
     key: "date",
     header: "Tanggal",
@@ -65,17 +71,20 @@ export function GamesTableClient({
   rows,
   sortKey,
   sortDir,
+  phase,
 }: {
   rows: GameRow[];
   sortKey: string;
   sortDir: "asc" | "desc";
+  phase: "regular" | "playoffs" | "all";
 }) {
+  const phaseQuery = phase === "regular" ? "" : `?phase=${phase}`;
   return (
     <DataTable
       sortKey={sortKey}
       sortDir={sortDir}
       rows={rows}
-      rowHref={(g) => `/games/${g.gameId}`}
+      rowHref={(g) => `/games/${g.gameId}${phaseQuery}`}
       columns={columns}
     />
   );

@@ -2,6 +2,8 @@
 // contracts — never raw database rows. Numeric values are coerced to JS
 // numbers in the query layer; nullish metrics stay null (rendered as "-").
 
+import type { GamePhase } from "@/lib/game-phase";
+
 export interface SeasonOption {
   seasonYear: number;
   competitionName: string;
@@ -16,6 +18,7 @@ export interface TeamOption {
 export interface GameRow {
   gameId: number;
   seasonYear: number;
+  phase: Exclude<GamePhase, "all">;
   weekNo: number | null;
   gameDate: string | null;
   venue: string | null;

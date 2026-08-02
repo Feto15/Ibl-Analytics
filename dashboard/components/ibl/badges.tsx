@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TriangleAlert, CheckCircle2, Info } from "lucide-react";
+import type { GamePhase } from "@/lib/game-phase";
 
 export function ResultBadge({ result }: { result: "W" | "L" }) {
   return (
@@ -14,6 +15,22 @@ export function ResultBadge({ result }: { result: "W" | "L" }) {
       )}
     >
       {result}
+    </Badge>
+  );
+}
+
+export function GamePhaseBadge({
+  phase,
+}: {
+  phase: Exclude<GamePhase, "all">;
+}) {
+  if (phase === "regular") return null;
+  return (
+    <Badge
+      variant="outline"
+      className="border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"
+    >
+      Playoff
     </Badge>
   );
 }

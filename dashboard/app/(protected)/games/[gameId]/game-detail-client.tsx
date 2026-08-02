@@ -8,7 +8,7 @@ import { DataTable } from "@/components/ibl/data-table";
 import { MetricLabel, METRIC_DEFINITIONS } from "@/components/ibl/metric-tooltip";
 import { ShotChart } from "@/components/ibl/shot-chart";
 import { MultiBarChart } from "@/components/ibl/multi-charts";
-import { ReviewDot } from "@/components/ibl/badges";
+import { GamePhaseBadge, ReviewDot } from "@/components/ibl/badges";
 import { fmtDate, fmtNum, fmtPct, fmtSigned, fmtDuration } from "@/lib/format";
 import type { GameDetailData } from "@/lib/db/queries/game-detail-loader";
 import type { PlayerBoxScore, TeamBoxScore, TeamMetricRow, LineupSummaryRow } from "@/lib/db/types";
@@ -45,7 +45,10 @@ export function GameDetailClient({
             {game.weekNo ? ` · W${game.weekNo}` : ""}
           </p>
         </div>
-        {reviewBadge}
+        <div className="flex items-center gap-2">
+          <GamePhaseBadge phase={game.phase} />
+          {reviewBadge}
+        </div>
       </div>
 
       {/* Final score + period breakdown */}

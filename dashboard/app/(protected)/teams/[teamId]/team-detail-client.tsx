@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { DataTable } from "@/components/ibl/data-table";
 import { SeasonFilter } from "@/components/ibl/season-filter";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { TrendAreaChart } from "@/components/ibl/trend-charts";
@@ -20,6 +21,7 @@ import type {
   TeamShotProfile,
   TeamTrendPoint,
 } from "@/lib/db/types";
+import { gamePhaseLabel, type GamePhase } from "@/lib/game-phase";
 
 interface TeamDetailClientProps {
   profile: TeamProfile;
@@ -32,6 +34,7 @@ interface TeamDetailClientProps {
   bestLineups: LineupSummaryRow[];
   worstLineups: LineupSummaryRow[];
   currentSeason: number;
+  phase: GamePhase;
 }
 
 export function TeamDetailClient({
@@ -45,9 +48,11 @@ export function TeamDetailClient({
   bestLineups,
   worstLineups,
   currentSeason,
+  phase,
 }: TeamDetailClientProps) {
   const winPct = profile.games > 0 ? profile.wins / profile.games : null;
-  const seasonQuery = `?season=${currentSeason}`;
+  const phaseQuery = phase === "regular" ? "" : `&phase=${phase}`;
+  const seasonQuery = `?season=${currentSeason}${phaseQuery}`;
 
   return (
     <div className="space-y-4">
@@ -64,10 +69,13 @@ export function TeamDetailClient({
             {profile.name || profile.code} <span className="font-normal text-muted-foreground">({profile.code})</span>
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Musim {currentSeason} · Rekor {profile.wins}-{profile.losses} ({fmtPct(winPct)})
+            {gamePhaseLabel(phase)} {currentSeason} · Rekor {profile.wins}-{profile.losses} ({fmtPct(winPct)})
           </p>
         </div>
-        <SeasonFilter seasons={profile.seasons} />
+        <div className="flex flex-wrap items-center gap-2">
+          <GamePhaseFilter value={phase} />
+          <SeasonFilter seasons={profile.seasons} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

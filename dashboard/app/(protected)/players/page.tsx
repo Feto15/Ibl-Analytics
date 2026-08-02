@@ -2,6 +2,7 @@ import { playersListDb, seasonsDb, teamsDb } from "@/lib/db";
 import { resolveSeasonParam } from "@/lib/server-utils";
 import { playersQuerySchema } from "@/lib/params";
 import { PlayersClient } from "./players-client";
+import type { GamePhase } from "@/lib/game-phase";
 
 export const metadata = { title: "Players | IBL Analytics" };
 
@@ -13,6 +14,7 @@ export default async function PlayersPage({
   const sp = await searchParams;
   const parsed = playersQuerySchema.safeParse(sp);
   const opts = parsed.success ? parsed.data : playersQuerySchema.parse({});
+  const phase: GamePhase = opts.phase;
 
   const season =
     parsed.success && parsed.data.season
@@ -30,6 +32,7 @@ export default async function PlayersPage({
       season,
       team: opts.team,
       q: opts.q,
+      phase,
     }),
   ]);
 
@@ -48,6 +51,7 @@ export default async function PlayersPage({
         currentQuery={opts.q ?? ""}
         sort={opts.sort}
         dir={opts.dir}
+        phase={phase}
       />
     </div>
   );

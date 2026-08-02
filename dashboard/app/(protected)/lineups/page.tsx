@@ -2,6 +2,7 @@ import { lineupsDb, seasonsDb } from "@/lib/db";
 import { resolveSeasonParam } from "@/lib/server-utils";
 import { lineupsQuerySchema } from "@/lib/params";
 import { LineupsClient } from "./lineups-client";
+import type { GamePhase } from "@/lib/game-phase";
 
 export const metadata = { title: "Lineups | IBL Analytics" };
 
@@ -13,6 +14,7 @@ export default async function LineupsPage({
   const sp = await searchParams;
   const parsed = lineupsQuerySchema.safeParse(sp);
   const opts = parsed.success ? parsed.data : lineupsQuerySchema.parse({});
+  const phase: GamePhase = opts.phase;
 
   const season = await resolveSeasonParam(sp.season);
   const seasons = await seasonsDb.getSeasons();
@@ -26,6 +28,7 @@ export default async function LineupsPage({
     team: opts.team,
     minDuration: opts.minDuration,
     review: opts.review,
+    phase,
   });
 
   return (
@@ -38,6 +41,7 @@ export default async function LineupsPage({
         sort={opts.sort}
         dir={opts.dir}
         review={opts.review}
+        phase={phase}
       />
     </div>
   );

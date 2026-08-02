@@ -237,6 +237,7 @@ referensi rumus dari dokumentasi pipeline.
 Filter harus konsisten di seluruh dashboard:
 
 - season;
+- fase pertandingan (musim reguler, playoff, atau semua fase);
 - team;
 - player;
 - game;

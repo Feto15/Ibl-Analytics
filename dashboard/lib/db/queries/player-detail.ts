@@ -11,10 +11,13 @@ import type {
   SeasonOption,
 } from "../types";
 import { gameRowQuery } from "./overview";
+import { gamePhaseCondition } from "../game-phase";
+import type { GamePhase } from "@/lib/game-phase";
 
 export async function getPlayerProfile(
   playerId: number,
-  season?: number
+  season?: number,
+  phase: GamePhase = "regular"
 ): Promise<PlayerProfile | null> {
   const base = await run<{
     player_id: unknown;
@@ -42,6 +45,7 @@ export async function getPlayerProfile(
       join games g on g.game_id = gr.game_id
       where gr.player_id = ${playerId}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
+      and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       order by gr.player_id, g.game_date desc
     `
   );
@@ -54,6 +58,7 @@ export async function getPlayerProfile(
       join games g on g.game_id = pgs.game_id
       where pgs.player_id = ${playerId} and pgs.did_play = true
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
+      and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
     `
   );
   const seasonRows = await run<{ season_year: unknown; competition_name: string }[]>(
@@ -92,7 +97,8 @@ export async function getPlayerProfile(
 export async function getPlayerGameStats(
   playerId: number,
   season?: number,
-  limit = 50
+  limit = 50,
+  phase: GamePhase = "regular"
 ): Promise<PlayerGameStatRow[]> {
   const rows = await run<{
     game_id: unknown;
@@ -130,6 +136,7 @@ export async function getPlayerGameStats(
       join teams opp_t on opp_t.team_id = opp.team_id
       where pgs.player_id = ${playerId} and pgs.did_play = true
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
+      and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       order by g.game_date desc, g.game_id desc
       limit ${limit}
     `
@@ -155,7 +162,8 @@ export async function getPlayerGameStats(
 
 export async function getPlayerSplits(
   playerId: number,
-  season?: number
+  season?: number,
+  phase: GamePhase = "regular"
 ): Promise<PlayerSplit[]> {
   const seasonClause = season !== undefined ? sql`and g.season_year = ${season}` : sql``;
   const rows = await run<{
@@ -180,6 +188,7 @@ export async function getPlayerSplits(
       join games g on g.game_id = pgs.game_id
       join team_game_stats tgs on tgs.game_id = pgs.game_id and tgs.team_id = pgs.team_id
       where pgs.player_id = ${playerId} and pgs.did_play = true ${seasonClause}
+        and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       group by case when tgs.is_home then 'Home' else 'Away' end
     `
   );
@@ -205,7 +214,8 @@ export async function getPlayerSplits(
 export async function getPlayerPlusMinus(
   playerId: number,
   season?: number,
-  limit = 30
+  limit = 30,
+  phase: GamePhase = "regular"
 ): Promise<PlusMinusDetailRow[]> {
   const rows = await run<{
     game_id: unknown;
@@ -234,6 +244,7 @@ export async function getPlayerPlusMinus(
       join games g on g.game_id = pm.game_id
       where pm.player_id = ${playerId}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
+      and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       order by g.game_date desc, g.game_id desc
       limit ${limit}
     `
@@ -273,11 +284,15 @@ export async function getPlayerPlusMinus(
 export async function getPlayerGames(
   playerId: number,
   season?: number,
-  limit = 30
+  limit = 30,
+  phase: GamePhase = "regular"
 ): Promise<GameRow[]> {
   const where = season
-    ? sql`g.game_id in (select game_id from player_game_stats where player_id = ${playerId}) and g.season_year = ${season}`
-    : sql`g.game_id in (select game_id from player_game_stats where player_id = ${playerId})`;
+    ? sql`g.game_id in (select game_id from player_game_stats where player_id = ${playerId})
+        and g.season_year = ${season}
+        and ${gamePhaseCondition(sql`g.source_game_key`, phase)}`
+    : sql`g.game_id in (select game_id from player_game_stats where player_id = ${playerId})
+        and ${gamePhaseCondition(sql`g.source_game_key`, phase)}`;
   return gameRowQuery(where, sql`g.game_date desc, g.game_id desc`, sql`${limit}`);
 }
 

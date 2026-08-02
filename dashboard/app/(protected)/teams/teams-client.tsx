@@ -5,20 +5,24 @@ import Link from "next/link";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { SeasonFilter } from "@/components/ibl/season-filter";
 import { ReviewFilter } from "@/components/ibl/review-filter";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 import type { SeasonOption, StandingRow } from "@/lib/db/types";
 import type { ReviewMode } from "@/lib/review";
+import { gamePhaseLabel, type GamePhase } from "@/lib/game-phase";
 
 interface TeamsClientProps {
   data: StandingRow[];
   seasons: SeasonOption[];
   currentSeason: number;
   review: ReviewMode;
+  phase: GamePhase;
   sort: string;
   dir: "asc" | "desc";
 }
 
-export function TeamsClient({ data, seasons, currentSeason, review, sort, dir }: TeamsClientProps) {
+export function TeamsClient({ data, seasons, currentSeason, review, phase, sort, dir }: TeamsClientProps) {
+  const phaseQuery = phase === "regular" ? "" : `&phase=${phase}`;
   const rankedRows = useMemo(
     () => data.map((row, index) => ({ row, rank: index + 1 })),
     [data]
@@ -35,7 +39,7 @@ export function TeamsClient({ data, seasons, currentSeason, review, sort, dir }:
         key: "code",
         header: "Code",
         cell: (entry) => (
-          <Link href={`/teams/${entry.row.teamId}?season=${currentSeason}`} className="font-semibold text-primary hover:underline">
+          <Link href={`/teams/${entry.row.teamId}?season=${currentSeason}${phaseQuery}`} className="font-semibold text-primary hover:underline">
             {entry.row.code}
           </Link>
         ),
@@ -65,7 +69,7 @@ export function TeamsClient({ data, seasons, currentSeason, review, sort, dir }:
       { key: "efg", header: "eFG%", align: "right", cell: (entry) => fmtPct(entry.row.efgPercent, 1), sortValue: "efg" },
       { key: "ts", header: "TS%", align: "right", cell: (entry) => fmtPct(entry.row.tsPercent, 1), sortValue: "ts" },
     ],
-    [currentSeason]
+    [currentSeason, phaseQuery]
   );
 
   return (
@@ -74,11 +78,12 @@ export function TeamsClient({ data, seasons, currentSeason, review, sort, dir }:
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Teams</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Musim {currentSeason} · {data.length} tim
+            {gamePhaseLabel(phase)} {currentSeason} · {data.length} tim
           </p>
         </div>
         <div className="flex items-center gap-2">
           <ReviewFilter value={review} />
+          <GamePhaseFilter value={phase} />
           <SeasonFilter seasons={seasons} />
         </div>
       </div>
@@ -94,7 +99,7 @@ export function TeamsClient({ data, seasons, currentSeason, review, sort, dir }:
             rows={rankedRows}
             sortKey={sort}
             sortDir={dir}
-            rowHref={(entry) => `/teams/${entry.row.teamId}?season=${currentSeason}`}
+            rowHref={(entry) => `/teams/${entry.row.teamId}?season=${currentSeason}${phaseQuery}`}
           />
         )}
       </div>

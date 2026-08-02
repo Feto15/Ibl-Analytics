@@ -4,6 +4,7 @@ import { overviewQuerySchema } from "@/lib/params";
 import { OverviewClient } from "./overview-client";
 import { LoadingBlock } from "@/components/ibl/states";
 import type { ReviewMode } from "@/lib/review";
+import type { GamePhase } from "@/lib/game-phase";
 
 export default async function OverviewPage({
   searchParams,
@@ -13,6 +14,7 @@ export default async function OverviewPage({
   const sp = await searchParams;
   const parsed = overviewQuerySchema.safeParse(sp);
   const review: ReviewMode = parsed.success ? parsed.data.review : "exclude";
+  const phase: GamePhase = parsed.success ? parsed.data.phase : "regular";
   const season =
     parsed.success && parsed.data.season
       ? parsed.data.season
@@ -28,11 +30,11 @@ export default async function OverviewPage({
 
   try {
     const [kpis, standings, leaderboard, trend, recent] = await Promise.all([
-      overviewDb.getOverviewKpis(season, review),
-      overviewDb.getStandings(season, review),
-      overviewDb.getPlayerLeaderboard(season, 10, review),
-      overviewDb.getGameTrend(season, review),
-      overviewDb.getRecentGames(season, 6, review),
+      overviewDb.getOverviewKpis(season, review, phase),
+      overviewDb.getStandings(season, review, phase),
+      overviewDb.getPlayerLeaderboard(season, 10, review, phase),
+      overviewDb.getGameTrend(season, review, phase),
+      overviewDb.getRecentGames(season, 6, review, phase),
     ]);
     payload = { kpis, standings, leaderboard, trend, recent };
   } catch {
@@ -47,6 +49,7 @@ export default async function OverviewPage({
     <OverviewClient
       season={season}
       review={review}
+      phase={phase}
       kpis={payload.kpis}
       standings={payload.standings}
       leaderboard={payload.leaderboard}

@@ -5,6 +5,8 @@ import { countRows, int, num, str } from "./helpers";
 import { gameRowQuery } from "./overview";
 import { teamIdMatches } from "../team-identity";
 import { canonicalTeamIdExpression } from "../team-identity";
+import { gamePhaseCondition } from "../game-phase";
+import type { GamePhase } from "@/lib/game-phase";
 import type { GameRow, PageResult } from "../types";
 
 const SORT_MAP: Record<string, string> = {
@@ -23,12 +25,14 @@ export async function getGames(
     sort: string;
     dir: "asc" | "desc";
     season?: number;
+    phase?: GamePhase;
     team?: number;
     q?: string;
   }
 ): Promise<PageResult<GameRow>> {
   const conditions = [];
   if (opts.season) conditions.push(sql`g.season_year = ${opts.season}`);
+  conditions.push(gamePhaseCondition(sql`g.source_game_key`, opts.phase));
   if (opts.team) {
     conditions.push(
       sql`(${teamIdMatches(sql`g.home_team_id`, opts.team, opts.season)} or ${teamIdMatches(sql`g.away_team_id`, opts.team, opts.season)})`

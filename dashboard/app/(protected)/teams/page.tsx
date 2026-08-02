@@ -3,6 +3,7 @@ import { resolveSeasonParam } from "@/lib/server-utils";
 import { TeamsClient } from "./teams-client";
 import { teamsQuerySchema } from "@/lib/params";
 import type { StandingRow } from "@/lib/db/types";
+import type { GamePhase } from "@/lib/game-phase";
 
 export const metadata = { title: "Teams | IBL Analytics" };
 
@@ -28,12 +29,13 @@ export default async function TeamsPage({
   const sort = parsed.success ? parsed.data.sort : "win_pct";
   const dir = parsed.success ? parsed.data.dir : "desc";
   const review = parsed.success ? parsed.data.review : "exclude";
+  const phase: GamePhase = parsed.success ? parsed.data.phase : "regular";
 
   const season = parsed.success && parsed.data.season
     ? parsed.data.season
     : await resolveSeasonParam(sp.season);
   const seasons = await seasonsDb.getSeasons();
-  const standings: StandingRow[] = [...(await overviewDb.getStandings(season, review))];
+  const standings: StandingRow[] = [...(await overviewDb.getStandings(season, review, phase))];
 
   standings.sort((a, b) => {
     const field = sortableFieldMap[sort];
@@ -50,7 +52,7 @@ export default async function TeamsPage({
 
   return (
     <div className="p-6">
-      <TeamsClient data={standings} seasons={seasons} currentSeason={season} review={review} sort={sort} dir={dir} />
+      <TeamsClient data={standings} seasons={seasons} currentSeason={season} review={review} phase={phase} sort={sort} dir={dir} />
     </div>
   );
 }

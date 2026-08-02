@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { resolveSeasonParam } from "@/lib/server-utils";
+import { resolveGamePhaseParam, resolveSeasonParam } from "@/lib/server-utils";
 import { idParam } from "@/lib/params";
 import { playerDetailDb, shotsDb } from "@/lib/db";
 import { PlayerDetailClient } from "./player-detail-client";
@@ -16,7 +16,8 @@ export async function generateMetadata({
   const parsed = idParam.safeParse(p.playerId);
   if (!parsed.success) return { title: "Not Found" };
   const season = await resolveSeasonParam(sp.season);
-  const profile = await playerDetailDb.getPlayerProfile(parsed.data, season);
+  const phase = resolveGamePhaseParam(sp.phase);
+  const profile = await playerDetailDb.getPlayerProfile(parsed.data, season, phase);
   if (!profile) return { title: "Not Found" };
   return { title: `${profile.displayName} | IBL Analytics` };
 }
@@ -34,18 +35,19 @@ export default async function PlayerDetailPage({
   if (!parsed.success) notFound();
 
   const season = await resolveSeasonParam(sp.season);
+  const phase = resolveGamePhaseParam(sp.phase);
   const teamRaw = Array.isArray(sp.team) ? sp.team[0] : sp.team;
   const teamParsed = teamRaw ? idParam.safeParse(teamRaw) : null;
   const teamId = teamParsed?.success ? teamParsed.data : undefined;
 
-  const profile = await playerDetailDb.getPlayerProfile(parsed.data, season);
+  const profile = await playerDetailDb.getPlayerProfile(parsed.data, season, phase);
   if (!profile) notFound();
 
   const [games, splits, plusMinus, shots] = await Promise.all([
-    playerDetailDb.getPlayerGameStats(parsed.data, season),
-    playerDetailDb.getPlayerSplits(parsed.data, season),
-    playerDetailDb.getPlayerPlusMinus(parsed.data, season),
-    shotsDb.getShots({ playerId: parsed.data, season, limit: 1500 }),
+    playerDetailDb.getPlayerGameStats(parsed.data, season, 50, phase),
+    playerDetailDb.getPlayerSplits(parsed.data, season, phase),
+    playerDetailDb.getPlayerPlusMinus(parsed.data, season, 30, phase),
+    shotsDb.getShots({ playerId: parsed.data, season, phase, limit: 1500 }),
   ]);
 
   return (
@@ -58,6 +60,7 @@ export default async function PlayerDetailPage({
         shots={shots}
         currentSeason={season}
         currentTeam={teamId}
+        phase={phase}
       />
     </div>
   );

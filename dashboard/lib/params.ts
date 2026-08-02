@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { GamePhase } from "@/lib/game-phase";
 
 // Zod schemas for route + query params. Everything reaching the database is
 // validated here; sort keys/directions are constrained enums (never raw SQL).
@@ -8,6 +9,10 @@ export const seasonParam = z.coerce.number().int().min(1900).max(2100);
 export const idParam = z.coerce.number().int().positive();
 
 export const sortDir = z.enum(["asc", "desc"]).default("desc");
+
+export const gamePhaseSchema = z
+  .enum(["regular", "playoffs", "all"])
+  .default("regular") as z.ZodType<GamePhase>;
 
 export const gamesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -19,6 +24,7 @@ export const gamesQuerySchema = z.object({
   team: z.coerce.number().int().positive().optional(),
   q: z.string().trim().max(100).optional(),
   season: seasonParam.optional(),
+  phase: gamePhaseSchema,
 });
 
 export const lineupsQuerySchema = z.object({
@@ -38,6 +44,7 @@ export const lineupsQuerySchema = z.object({
   season: seasonParam.optional(),
   minDuration: z.coerce.number().int().min(0).optional(),
   review: z.enum(["include", "exclude"]).default("exclude"),
+  phase: gamePhaseSchema,
 });
 
 export const reviewQuerySchema = z.object({
@@ -70,6 +77,7 @@ export const playersQuerySchema = z.object({
   season: seasonParam.optional(),
   team: z.coerce.number().int().positive().optional(),
   q: z.string().trim().max(100).optional(),
+  phase: gamePhaseSchema,
 });
 
 export const teamsQuerySchema = z.object({
@@ -88,11 +96,13 @@ export const teamsQuerySchema = z.object({
     .default("win_pct"),
   dir: sortDir,
   review: z.enum(["include", "exclude"]).default("exclude"),
+  phase: gamePhaseSchema,
 });
 
 export const overviewQuerySchema = z.object({
   season: seasonParam.optional(),
   review: z.enum(["include", "exclude"]).default("exclude"),
+  phase: gamePhaseSchema,
 });
 
 export const shotChartQuerySchema = z.object({

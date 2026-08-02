@@ -21,6 +21,7 @@ export default async function GamesPage({
     team: sp.team,
     q: sp.q,
     season: sp.season,
+    phase: sp.phase,
   });
   const params = parsed.success ? parsed.data : gamesQuerySchema.parse({});
 
@@ -36,6 +37,7 @@ export default async function GamesPage({
     season,
     team: params.team,
     q: params.q,
+    phase: params.phase,
   });
 
   const teamOptions = teams.map((t) => ({
@@ -67,6 +69,7 @@ export default async function GamesPage({
           currentSeason={params.season ? String(params.season) : ""}
           currentTeam={params.team ? String(params.team) : ""}
           currentQuery={params.q ?? ""}
+          currentPhase={params.phase}
         />
       </SectionCard>
 
@@ -83,6 +86,7 @@ export default async function GamesPage({
               rows={result.rows}
               sortKey={params.sort}
               sortDir={params.dir}
+              phase={params.phase}
             />
             <PaginationBar pagination={result.pagination} pageSizeOptions={[10, 25, 50]} />
           </>

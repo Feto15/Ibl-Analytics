@@ -5,11 +5,13 @@ import Link from "next/link";
 import { DataTable, type SortableColumn } from "@/components/ibl/data-table";
 import { PaginationBar } from "@/components/ibl/pagination-bar";
 import { SeasonFilter } from "@/components/ibl/season-filter";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { EmptyState } from "@/components/ibl/states";
 import { PlayersFilters } from "./players-filters";
 import { fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 import type { Pagination, PlayerLeaderRow, SeasonOption } from "@/lib/db/types";
+import type { GamePhase } from "@/lib/game-phase";
 
 interface PlayersClientProps {
   data: PlayerLeaderRow[];
@@ -21,6 +23,7 @@ interface PlayersClientProps {
   currentQuery: string;
   sort: string;
   dir: "asc" | "desc";
+  phase: GamePhase;
 }
 
 export function PlayersClient({
@@ -33,10 +36,12 @@ export function PlayersClient({
   currentQuery,
   sort,
   dir,
+  phase,
 }: PlayersClientProps) {
-  const seasonQuery = `?season=${currentSeason}`;
+  const phaseQuery = phase === "regular" ? "" : `&phase=${phase}`;
+  const seasonQuery = `?season=${currentSeason}${phaseQuery}`;
   const detailQuery = currentTeam
-    ? `?season=${currentSeason}&team=${currentTeam}`
+    ? `?season=${currentSeason}&team=${currentTeam}${phaseQuery}`
     : seasonQuery;
 
   const columns = useMemo<SortableColumn<PlayerLeaderRow>[]>(
@@ -138,7 +143,10 @@ export function PlayersClient({
             Musim {currentSeason} · {pagination.total.toLocaleString("en-US")} pemain
           </p>
         </div>
-        <SeasonFilter seasons={seasons} />
+        <div className="flex flex-wrap items-center gap-2">
+          <GamePhaseFilter value={phase} />
+          <SeasonFilter seasons={seasons} />
+        </div>
       </div>
 
       <SectionCard bodyClassName="p-3">

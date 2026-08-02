@@ -21,10 +21,12 @@ export default async function GameDetailPage({
     notFound();
   }
 
+  const phaseQuery = data.game.phase === "regular" ? "" : `&phase=${data.game.phase}`;
+
   return (
     <div className="w-full space-y-4 p-4 sm:p-6">
       <div className="flex items-center gap-2 text-sm">
-        <Link href="/games" className="text-muted-foreground hover:text-foreground">
+        <Link href={`/games?season=${data.game.seasonYear}${phaseQuery}`} className="text-muted-foreground hover:text-foreground">
           ← Pertandingan
         </Link>
       </div>

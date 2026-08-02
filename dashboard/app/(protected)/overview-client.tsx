@@ -8,7 +8,9 @@ import { MetricLabel, METRIC_DEFINITIONS } from "@/components/ibl/metric-tooltip
 import { TrendAreaChart, RankedBarChart } from "@/components/ibl/trend-charts";
 import { ResultBadge } from "@/components/ibl/badges";
 import { ReviewFilter } from "@/components/ibl/review-filter";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { fmtDate, fmtNum, fmtPct, fmtInt, fmtSigned } from "@/lib/format";
+import { gamePhaseLabel, type GamePhase } from "@/lib/game-phase";
 import type {
   GameRow,
   GameTrendPoint,
@@ -21,6 +23,7 @@ import type { ReviewMode } from "@/lib/review";
 export function OverviewClient({
   season,
   review,
+  phase,
   kpis,
   standings,
   leaderboard,
@@ -29,12 +32,15 @@ export function OverviewClient({
 }: {
   season: number;
   review: ReviewMode;
+  phase: GamePhase;
   kpis: OverviewKpis;
   standings: StandingRow[];
   leaderboard: PlayerLeaderRow[];
   trend: GameTrendPoint[];
   recentGames: GameRow[];
 }) {
+  const phaseQuery = phase === "regular" ? "" : `&phase=${phase}`;
+  const phaseLabel = gamePhaseLabel(phase);
   const trendSeries = trend.map((t) => ({
     label: t.label,
     value: t.value,
@@ -54,10 +60,13 @@ export function OverviewClient({
             Overview Kompetisi
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Musim {season} · {kpis.games} pertandingan
+            {phaseLabel} {season} · {kpis.games} pertandingan
           </p>
         </div>
-        <ReviewFilter value={review} />
+        <div className="flex flex-wrap items-center gap-2">
+          <GamePhaseFilter value={phase} />
+          <ReviewFilter value={review} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -127,7 +136,7 @@ export function OverviewClient({
           description="Win% 10 tim teratas"
           action={
             <Link
-              href={`/teams?season=${season}${review === "include" ? "&review=include" : ""}`}
+              href={`/teams?season=${season}${review === "include" ? "&review=include" : ""}${phaseQuery}`}
               className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
             >
               <TrendingUp className="size-3" />
@@ -151,10 +160,10 @@ export function OverviewClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SectionCard
           title="Leaderboard Pemain"
-          description={`Top scorer musim ${season}`}
+          description={`Top scorer ${phaseLabel.toLowerCase()} ${season}`}
           action={
             <Link
-              href={`/players?season=${season}`}
+              href={`/players?season=${season}${phaseQuery}`}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               Lihat semua
@@ -180,7 +189,7 @@ export function OverviewClient({
                   <tr key={p.playerId} className="border-b last:border-0 hover:bg-muted/40">
                     <td className="px-4 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
                     <td className="px-4 py-2 font-medium">
-                      <Link href={`/players/${p.playerId}`} className="hover:underline">
+                      <Link href={`/players/${p.playerId}?season=${season}${phaseQuery}`} className="hover:underline">
                         {p.displayName}
                       </Link>
                     </td>
@@ -214,7 +223,7 @@ export function OverviewClient({
             {recentGames.map((g) => (
               <Link
                 key={g.gameId}
-                href={`/games/${g.gameId}`}
+                href={`/games/${g.gameId}?season=${season}${phaseQuery}`}
                 className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors"
               >
                 <div className="min-w-0">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { DataTable } from "@/components/ibl/data-table";
 import { SeasonFilter } from "@/components/ibl/season-filter";
+import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { ShotChart } from "@/components/ibl/shot-chart";
@@ -17,6 +18,7 @@ import type {
   PlusMinusDetailRow,
   ShotPoint,
 } from "@/lib/db/types";
+import { gamePhaseLabel, type GamePhase } from "@/lib/game-phase";
 
 interface PlayerDetailClientProps {
   profile: PlayerProfile;
@@ -26,6 +28,7 @@ interface PlayerDetailClientProps {
   shots: ShotPoint[];
   currentSeason: number;
   currentTeam?: number;
+  phase: GamePhase;
 }
 
 export function PlayerDetailClient({
@@ -36,11 +39,13 @@ export function PlayerDetailClient({
   shots,
   currentSeason,
   currentTeam,
+  phase,
 }: PlayerDetailClientProps) {
+  const phaseQuery = phase === "regular" ? "" : `&phase=${phase}`;
   const listQuery = currentTeam
-    ? `?season=${currentSeason}&team=${currentTeam}`
-    : `?season=${currentSeason}`;
-  const seasonQuery = `?season=${currentSeason}`;
+    ? `?season=${currentSeason}&team=${currentTeam}${phaseQuery}`
+    : `?season=${currentSeason}${phaseQuery}`;
+  const seasonQuery = `?season=${currentSeason}${phaseQuery}`;
 
   const totalGames = games.length;
   const totalPts = games.reduce((acc, game) => acc + (game.points || 0), 0);
@@ -88,14 +93,17 @@ export function PlayerDetailClient({
             ) : (
               <span>Tanpa tim</span>
             )}
-            <span>· Musim {currentSeason}</span>
+            <span>· {gamePhaseLabel(phase)} {currentSeason}</span>
             {profile.position ? <span>· {profile.position}</span> : null}
             {profile.heightCm ? <span>· {profile.heightCm} cm</span> : null}
             {profile.age ? <span>· Usia {profile.age}</span> : null}
             <span>· {profile.gamesPlayed} GP</span>
           </div>
         </div>
-        <SeasonFilter seasons={profile.seasons} />
+        <div className="flex flex-wrap items-center gap-2">
+          <GamePhaseFilter value={phase} />
+          <SeasonFilter seasons={profile.seasons} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
@@ -123,7 +131,7 @@ export function PlayerDetailClient({
                   key: "date",
                   header: "Tanggal",
                   cell: (row) => (
-                    <Link href={`/games/${row.gameId}`} className="hover:underline">
+                    <Link href={`/games/${row.gameId}${seasonQuery}`} className="hover:underline">
                       {fmtDate(row.gameDate)}
                     </Link>
                   ),
@@ -195,7 +203,7 @@ export function PlayerDetailClient({
                   key: "game",
                   header: "Game",
                   cell: (row) => (
-                    <Link href={`/games/${row.gameId}`} className="inline-flex items-center gap-1 hover:underline">
+                    <Link href={`/games/${row.gameId}${seasonQuery}`} className="inline-flex items-center gap-1 hover:underline">
                       <ReviewDot active={row.hasIssue} />
                       Game {row.gameId}
                     </Link>
