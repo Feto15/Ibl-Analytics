@@ -30,7 +30,8 @@ export function LineupsClient({ data, pagination, sort, dir, review, phase }: Li
 
   const handleReviewChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("review", value);
+    if (value === "include") params.delete("review");
+    else params.set("review", value);
     params.set("page", "1");
     router.replace(`${pathname}?${params.toString()}`);
   };

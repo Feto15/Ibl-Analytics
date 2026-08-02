@@ -28,7 +28,7 @@ export default async function TeamsPage({
   const parsed = teamsQuerySchema.safeParse(sp);
   const sort = parsed.success ? parsed.data.sort : "win_pct";
   const dir = parsed.success ? parsed.data.dir : "desc";
-  const review = parsed.success ? parsed.data.review : "exclude";
+  const review = parsed.success ? parsed.data.review : "include";
   const phase: GamePhase = parsed.success ? parsed.data.phase : "regular";
 
   const season = parsed.success && parsed.data.season

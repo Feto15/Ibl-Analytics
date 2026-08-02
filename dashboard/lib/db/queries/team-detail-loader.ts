@@ -26,8 +26,8 @@ export async function loadTeamDetail(
     getTeamShotProfile(teamId, season, "exclude", phase),
     getTeamTopPlayers(teamId, season, 12, phase),
     getTeamRoster(teamId, season, phase),
-    getLineupSummaries({ page: 1, pageSize: 5, sort: "plus_minus", dir: "desc", season, phase, team: teamId, review: "exclude" }),
-    getLineupSummaries({ page: 1, pageSize: 5, sort: "plus_minus", dir: "asc", season, phase, team: teamId, review: "exclude" }),
+    getLineupSummaries({ page: 1, pageSize: 5, sort: "plus_minus", dir: "desc", season, phase, team: teamId, review: "include" }),
+    getLineupSummaries({ page: 1, pageSize: 5, sort: "plus_minus", dir: "asc", season, phase, team: teamId, review: "include" }),
   ]);
 
   return {

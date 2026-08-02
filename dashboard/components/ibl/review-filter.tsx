@@ -11,7 +11,7 @@ export function ReviewFilter({ value }: { value: ReviewMode }) {
 
   const onChange = (next: ReviewMode) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "exclude") params.delete("review");
+    if (next === "include") params.delete("review");
     else params.set("review", next);
     params.set("page", "1");
     const query = params.toString();

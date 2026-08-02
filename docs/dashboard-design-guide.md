@@ -295,14 +295,14 @@ Aturan audit:
 
 - Setiap angka yang berasal dari PDF harus punya jalur balik ke report source.
 - Data hasil parser dengan status `duplicate` tidak dihitung dua kali.
-- Data dengan status review boleh ditampilkan, tetapi harus diberi tanda.
+- Data dengan status review ditampilkan secara default, tetapi harus diberi tanda.
 - Dashboard tidak boleh menyembunyikan kegagalan validasi.
 
 Aturan `needs_review`:
 
 - KPI, ranking, dan tren utama memakai data yang tidak memiliki validation
   issue relevan secara default.
-- Pengguna dapat mengaktifkan filter untuk menyertakan data review.
+- Pengguna dapat memilih filter untuk mengecualikan data review dari agregasi yang mendukungnya.
 - Halaman detail tetap boleh menampilkan data review dengan badge warning.
 - Badge membuka detail `rule_code`, `message`, konteks pembanding, dan laporan
   sumber.

@@ -13,7 +13,7 @@ export default async function OverviewPage({
 }) {
   const sp = await searchParams;
   const parsed = overviewQuerySchema.safeParse(sp);
-  const review: ReviewMode = parsed.success ? parsed.data.review : "exclude";
+  const review: ReviewMode = parsed.success ? parsed.data.review : "include";
   const phase: GamePhase = parsed.success ? parsed.data.phase : "regular";
   const season =
     parsed.success && parsed.data.season

@@ -43,7 +43,7 @@ export const lineupsQuerySchema = z.object({
   team: z.coerce.number().int().positive().optional(),
   season: seasonParam.optional(),
   minDuration: z.coerce.number().int().min(0).optional(),
-  review: z.enum(["include", "exclude"]).default("exclude"),
+  review: z.enum(["include", "exclude"]).default("include"),
   phase: gamePhaseSchema,
 });
 
@@ -95,13 +95,13 @@ export const teamsQuerySchema = z.object({
   ])
     .default("win_pct"),
   dir: sortDir,
-  review: z.enum(["include", "exclude"]).default("exclude"),
+  review: z.enum(["include", "exclude"]).default("include"),
   phase: gamePhaseSchema,
 });
 
 export const overviewQuerySchema = z.object({
   season: seasonParam.optional(),
-  review: z.enum(["include", "exclude"]).default("exclude"),
+  review: z.enum(["include", "exclude"]).default("include"),
   phase: gamePhaseSchema,
 });
 

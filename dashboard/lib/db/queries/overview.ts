@@ -81,7 +81,7 @@ const getCachedOverviewKpis = cached(loadOverviewKpis.bind(null), ["ibl-overview
 
 export function getOverviewKpis(
   season: number,
-  review: ReviewMode = "exclude",
+  review: ReviewMode = "include",
   phase: GamePhase = "regular"
 ) {
   // Review-dependent aggregates must remain fresh after a new import.
@@ -168,7 +168,7 @@ const getCachedStandings = cached(loadStandings.bind(null), ["ibl-standings"]);
 
 export function getStandings(
   season: number,
-  review: ReviewMode = "exclude",
+  review: ReviewMode = "include",
   phase: GamePhase = "regular"
 ) {
   return review === "include"
@@ -263,7 +263,7 @@ const getCachedPlayerLeaderboard = cached(
 export function getPlayerLeaderboard(
   season: number,
   limit = 50,
-  review: ReviewMode = "exclude",
+  review: ReviewMode = "include",
   phase: GamePhase = "regular"
 ) {
   return review === "include"
@@ -311,7 +311,7 @@ const getCachedGameTrend = cached(loadGameTrend.bind(null), ["ibl-game-trend"]);
 
 export function getGameTrend(
   season: number,
-  review: ReviewMode = "exclude",
+  review: ReviewMode = "include",
   phase: GamePhase = "regular"
 ) {
   return review === "include"
@@ -322,7 +322,7 @@ export function getGameTrend(
 export async function getRecentGames(
   season: number,
   limit = 8,
-  review: ReviewMode = "exclude",
+  review: ReviewMode = "include",
   phase: GamePhase = "regular"
 ): Promise<GameRow[]> {
   const rows = await gameRowQuery(

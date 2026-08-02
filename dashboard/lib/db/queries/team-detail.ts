@@ -159,7 +159,7 @@ export async function getTeamTrend(
 export async function getTeamShotProfile(
   teamId: number,
   season?: number,
-  review: ReviewMode = "exclude",
+  review: ReviewMode = "include",
   phase: GamePhase = "regular"
 ): Promise<TeamShotProfile[]> {
   const canonicalId = canonicalTeamId(teamId, season);
