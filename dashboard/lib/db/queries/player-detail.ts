@@ -4,8 +4,10 @@ import { run } from "../client";
 import { int, num, str } from "./helpers";
 import type {
   GameRow,
+  MetricRankInfo,
   PlayerGameStatRow,
   PlayerProfile,
+  PlayerRanks,
   PlayerSplit,
   PlusMinusDetailRow,
   SeasonOption,
@@ -16,6 +18,7 @@ import type { GamePhase } from "@/lib/game-phase";
 import {
   canonicalPlayerDisplayName,
   canonicalPlayerId,
+  canonicalPlayerIdExpression,
   getPlayerCategory,
   playerIdMatches,
 } from "../player-identity";
@@ -88,6 +91,7 @@ export async function getPlayerProfile(
   }));
 
   const displayName = canonicalPlayerDisplayName(canonicalId, base[0].display_name);
+  const ranks = await getPlayerRanks(canonicalId, season, phase);
 
   return {
     playerId: canonicalId,
@@ -103,6 +107,7 @@ export async function getPlayerProfile(
     age: int(latest[0]?.age),
     gamesPlayed: int(stats[0]?.games) ?? 0,
     seasons,
+    ranks,
   };
 }
 
@@ -345,4 +350,98 @@ export async function searchPlayers(q: string, limit: number) {
     }
   }
   return Array.from(map.values()).slice(0, limit);
+}
+
+export async function getPlayerRanks(
+  playerId: number,
+  season?: number,
+  phase: GamePhase = "regular"
+): Promise<PlayerRanks> {
+  const canonicalId = canonicalPlayerId(playerId);
+  const rows = await run<{
+    player_id: unknown;
+    display_name: string;
+    minutes_seconds: unknown;
+    points: unknown;
+    rebounds: unknown;
+    assists: unknown;
+    plus_minus: unknown;
+  }[]>(
+    sql`
+      with filtered as (
+        select
+          ${canonicalPlayerIdExpression(sql`pgs.player_id`)} as player_id,
+          pgs.minutes_seconds,
+          pgs.points,
+          pgs.total_rebounds,
+          pgs.assists,
+          pgs.plus_minus
+        from player_game_stats pgs
+        join games g on g.game_id = pgs.game_id
+        where ${season !== undefined ? sql`g.season_year = ${season}` : sql`true`}
+          and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
+          and pgs.did_play = true
+      ),
+      agg as (
+        select
+          f.player_id,
+          avg(f.minutes_seconds)::float8 as minutes_seconds,
+          avg(f.points)::float8 as points,
+          avg(f.total_rebounds)::float8 as rebounds,
+          avg(f.assists)::float8 as assists,
+          avg(f.plus_minus)::float8 as plus_minus
+        from filtered f
+        group by f.player_id
+      )
+      select
+        agg.player_id::int as player_id,
+        p.display_name,
+        agg.minutes_seconds,
+        agg.points,
+        agg.rebounds,
+        agg.assists,
+        agg.plus_minus
+      from agg
+      join players p on p.player_id = agg.player_id
+    `
+  );
+
+  const parsed = rows.map((r) => {
+    const pid = int(r.player_id) ?? 0;
+    const name = canonicalPlayerDisplayName(pid, r.display_name);
+    return {
+      playerId: pid,
+      name,
+      category: getPlayerCategory(name),
+      ppg: num(r.points) ?? 0,
+      rpg: num(r.rebounds) ?? 0,
+      apg: num(r.assists) ?? 0,
+      pm: num(r.plus_minus) ?? 0,
+      mpg: num(r.minutes_seconds) !== null ? num(r.minutes_seconds)! / 60 : 0,
+    };
+  });
+
+  const target = parsed.find((p) => p.playerId === canonicalId);
+  if (!target) return {};
+
+  const calcRank = (key: "ppg" | "rpg" | "apg" | "pm" | "mpg"): MetricRankInfo => {
+    const overallSorted = [...parsed].sort((a, b) => b[key] - a[key]);
+    const categorySorted = overallSorted.filter((p) => p.category === target.category);
+    const overallRank = overallSorted.findIndex((p) => p.playerId === canonicalId) + 1;
+    const categoryRank = categorySorted.findIndex((p) => p.playerId === canonicalId) + 1;
+    return {
+      overallRank: overallRank > 0 ? overallRank : 0,
+      categoryRank: categoryRank > 0 ? categoryRank : 0,
+      totalCategory: categorySorted.length,
+      totalOverall: overallSorted.length,
+    };
+  };
+
+  return {
+    ppg: calcRank("ppg"),
+    rpg: calcRank("rpg"),
+    apg: calcRank("apg"),
+    plusMinus: calcRank("pm"),
+    mpg: calcRank("mpg"),
+  };
 }

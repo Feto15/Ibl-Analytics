@@ -21,6 +21,7 @@ const PLAYER_ID_ALIASES: Readonly<Record<number, number>> = {
 
   // Rans Simba Bogor (RSB)
   852: 854, // Daniel William T Salamena -> Daniel William Tunasey Salamena
+  1781: 854, // Daniel W. T. Salamena (ID 1781) -> Daniel William Tunasey Salamena (ID 854)
   1074: 1075, // Rheza Saputra Butar Butar -> Rheza Saputra Butarbutar
 
   // Rajawali Medan (RJM)
@@ -282,7 +283,7 @@ export function isCanonicalPlayerId(playerId: number): boolean {
 
 export function isForeignPlayer(displayName?: string | null): boolean {
   if (!displayName) return false;
-  const norm = displayName.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+  const norm = displayName.toLowerCase().replace(/[-_]/g, " ").replace(/[^a-z0-9 ]/g, "").trim();
   return FOREIGN_PLAYER_NAMES.has(norm);
 }
 
@@ -296,7 +297,7 @@ export function playerCategoryCondition(
 ): SQL {
   if (!category || category === "all") return sql`true`;
   const names = Array.from(FOREIGN_PLAYER_NAMES);
-  const inClause = sql`replace(lower(${column}), '_', ' ') in (${sql.join(
+  const inClause = sql`replace(replace(lower(${column}), '_', ' '), '-', ' ') in (${sql.join(
     names.map((n) => sql`${n}`),
     sql`, `
   )})`;

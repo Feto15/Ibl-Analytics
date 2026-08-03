@@ -7,7 +7,7 @@ import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { ShotChart } from "@/components/ibl/shot-chart";
-import { PlayerCategoryBadge, ReviewDot } from "@/components/ibl/badges";
+import { PlayerCategoryBadge, RankBadge, ReviewDot } from "@/components/ibl/badges";
 import { TeamLogo } from "@/components/ibl/team-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, fmtDuration, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
@@ -110,10 +110,30 @@ export function PlayerDetailClient({
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <KpiCard label="GP" value={fmtNum(totalGames, 0)} />
         <KpiCard label="MIN/G" value={fmtNum(mpg)} />
-        <KpiCard label="PPG" value={fmtNum(ppg)} />
-        <KpiCard label="RPG" value={fmtNum(rpg)} />
-        <KpiCard label="APG" value={fmtNum(apg)} />
-        <KpiCard label="+/-" value={fmtSigned(pmAvg)} />
+        <KpiCard
+          label="PPG"
+          value={fmtNum(ppg)}
+          badge={<RankBadge info={profile.ranks?.ppg} category={profile.category} />}
+          hint={profile.ranks?.ppg?.overallRank ? `#${profile.ranks.ppg.overallRank} Overall` : undefined}
+        />
+        <KpiCard
+          label="RPG"
+          value={fmtNum(rpg)}
+          badge={<RankBadge info={profile.ranks?.rpg} category={profile.category} />}
+          hint={profile.ranks?.rpg?.overallRank ? `#${profile.ranks.rpg.overallRank} Overall` : undefined}
+        />
+        <KpiCard
+          label="APG"
+          value={fmtNum(apg)}
+          badge={<RankBadge info={profile.ranks?.apg} category={profile.category} />}
+          hint={profile.ranks?.apg?.overallRank ? `#${profile.ranks.apg.overallRank} Overall` : undefined}
+        />
+        <KpiCard
+          label="+/-"
+          value={fmtSigned(pmAvg)}
+          badge={<RankBadge info={profile.ranks?.plusMinus} category={profile.category} />}
+          hint={profile.ranks?.plusMinus?.overallRank ? `#${profile.ranks.plusMinus.overallRank} Overall` : undefined}
+        />
       </div>
 
       <Tabs defaultValue="log" className="w-full">

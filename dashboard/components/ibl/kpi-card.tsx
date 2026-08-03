@@ -9,6 +9,7 @@ export interface KpiCardProps {
   definition?: string;
   icon?: React.ReactNode;
   accent?: "neutral" | "positive" | "negative" | "info";
+  badge?: React.ReactNode;
   className?: string;
 }
 
@@ -26,26 +27,29 @@ export function KpiCard({
   definition,
   icon,
   accent = "neutral",
+  badge,
   className,
 }: KpiCardProps) {
   return (
     <SectionCard className={cn("p-0", className)}>
-      <div className="flex items-start justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="p-3.5 sm:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
             {definition && <MetricInfo label={definition} />}
           </div>
-          <p className={cn("text-2xl font-semibold tabular-nums mt-1", accentValue[accent])}>
-            {value}
-          </p>
-          {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
+          {badge ? (
+            <div className="shrink-0">{badge}</div>
+          ) : icon ? (
+            <div className="flex size-7 items-center justify-center rounded-md border bg-muted shrink-0 text-muted-foreground">
+              {icon}
+            </div>
+          ) : null}
         </div>
-        {icon && (
-          <div className="flex size-8 items-center justify-center rounded-md border bg-muted shrink-0 text-muted-foreground">
-            {icon}
-          </div>
-        )}
+        <p className={cn("text-2xl font-semibold tabular-nums tracking-tight mt-1.5", accentValue[accent])}>
+          {value}
+        </p>
+        {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
       </div>
     </SectionCard>
   );

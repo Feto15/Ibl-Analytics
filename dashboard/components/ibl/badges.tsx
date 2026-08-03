@@ -149,3 +149,23 @@ export function ReviewDot({ active }: { active: boolean }) {
 export function VerifiedTick() {
   return <CheckCircle2 className="size-3.5 text-emerald-500" />;
 }
+
+import type { MetricRankInfo } from "@/lib/db/types";
+
+export function RankBadge({
+  info,
+  category,
+}: {
+  info?: MetricRankInfo;
+  category?: "import" | "local";
+}) {
+  if (!info || !info.categoryRank) return null;
+  const isImport = category === "import";
+  const flag = isImport ? "🌐" : "🇮🇩";
+  return (
+    <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300 shrink-0">
+      <span>{flag}</span>
+      <span>#{info.categoryRank}</span>
+    </span>
+  );
+}

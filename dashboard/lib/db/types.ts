@@ -311,6 +311,21 @@ export interface PlayerGameStatRow {
   tsPercent: number | null;
 }
 
+export interface MetricRankInfo {
+  overallRank: number;
+  categoryRank: number;
+  totalCategory: number;
+  totalOverall: number;
+}
+
+export interface PlayerRanks {
+  ppg?: MetricRankInfo;
+  rpg?: MetricRankInfo;
+  apg?: MetricRankInfo;
+  plusMinus?: MetricRankInfo;
+  mpg?: MetricRankInfo;
+}
+
 export interface PlayerProfile {
   playerId: number;
   displayName: string;
@@ -325,6 +340,7 @@ export interface PlayerProfile {
   age: number | null;
   gamesPlayed: number;
   seasons: SeasonOption[];
+  ranks?: PlayerRanks;
 }
 
 export interface PlayerSplit {
