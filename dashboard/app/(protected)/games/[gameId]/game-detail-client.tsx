@@ -9,6 +9,7 @@ import { MetricLabel, METRIC_DEFINITIONS } from "@/components/ibl/metric-tooltip
 import { ShotChart } from "@/components/ibl/shot-chart";
 import { MultiBarChart } from "@/components/ibl/multi-charts";
 import { GamePhaseBadge, ReviewDot } from "@/components/ibl/badges";
+import { TeamLogo } from "@/components/ibl/team-logo";
 import { fmtDate, fmtNum, fmtPct, fmtSigned, fmtDuration } from "@/lib/format";
 import type { GameDetailData } from "@/lib/db/queries/game-detail-loader";
 import type { PlayerBoxScore, TeamBoxScore, TeamMetricRow, LineupSummaryRow } from "@/lib/db/types";
@@ -168,7 +169,8 @@ function TeamScore({
   score: number | null;
 }) {
   return (
-    <div className="text-center">
+    <div className="flex flex-col items-center text-center gap-1">
+      <TeamLogo code={code} name={name} size={48} className="h-12 w-12" />
       <Link href={`/teams/${teamId}`} className="text-base font-semibold hover:underline">
         {code}
       </Link>
@@ -187,9 +189,10 @@ function TeamBoxScoreTable({ rows }: { rows: TeamBoxScore[] }) {
           key: "team",
           header: "Tim",
           cell: (r) => (
-            <Link href={`/teams/${r.teamId}`} className="font-medium hover:underline">
-              {r.code}
-              {r.isHome ? <span className="ml-1 text-xs text-muted-foreground">(H)</span> : null}
+            <Link href={`/teams/${r.teamId}`} className="inline-flex items-center gap-2 font-medium hover:underline">
+              <TeamLogo code={r.code} size={22} />
+              <span>{r.code}</span>
+              {r.isHome ? <span className="text-xs text-muted-foreground">(H)</span> : null}
             </Link>
           ),
         },

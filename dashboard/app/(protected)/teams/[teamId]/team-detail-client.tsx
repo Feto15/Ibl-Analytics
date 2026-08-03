@@ -8,6 +8,7 @@ import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { TrendAreaChart } from "@/components/ibl/trend-charts";
 import { ReviewDot } from "@/components/ibl/badges";
+import { TeamLogo } from "@/components/ibl/team-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, fmtDuration, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 import type {
@@ -63,13 +64,16 @@ export function TeamDetailClient({
       </div>
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {profile.name || profile.code} <span className="font-normal text-muted-foreground">({profile.code})</span>
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {gamePhaseLabel(phase)} {currentSeason} · Rekor {profile.wins}-{profile.losses} ({fmtPct(winPct)})
-          </p>
+        <div className="flex items-center gap-4">
+          <TeamLogo code={profile.code} name={profile.name} size={56} className="h-14 w-14" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {profile.name || profile.code} <span className="font-normal text-muted-foreground">({profile.code})</span>
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {gamePhaseLabel(phase)} {currentSeason} · Rekor {profile.wins}-{profile.losses} ({fmtPct(winPct)})
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <GamePhaseFilter value={phase} />

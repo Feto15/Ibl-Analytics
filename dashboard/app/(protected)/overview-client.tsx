@@ -7,6 +7,7 @@ import { SectionCard } from "@/components/ibl/section-card";
 import { MetricLabel, METRIC_DEFINITIONS } from "@/components/ibl/metric-tooltip";
 import { TrendAreaChart, RankedBarChart } from "@/components/ibl/trend-charts";
 import { ResultBadge } from "@/components/ibl/badges";
+import { TeamLogo } from "@/components/ibl/team-logo";
 import { ReviewFilter } from "@/components/ibl/review-filter";
 import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { fmtDate, fmtNum, fmtPct, fmtInt, fmtSigned } from "@/lib/format";
@@ -193,7 +194,12 @@ export function OverviewClient({
                         {p.displayName}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-muted-foreground">{p.teamCode}</td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <TeamLogo code={p.teamCode} size={20} />
+                        <span>{p.teamCode}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-2 text-right tabular-nums">{p.gamesPlayed}</td>
                     <td className="px-4 py-2 text-right tabular-nums font-medium">
                       {fmtNum(p.pointsPerGame, 1)}
@@ -228,11 +234,13 @@ export function OverviewClient({
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm">
+                    <TeamLogo code={g.homeCode} size={20} />
                     <span className="font-medium">{g.homeCode}</span>
-                    <span className="tabular-nums">
+                    <span className="tabular-nums font-semibold px-1">
                       {g.homeScore ?? "-"} : {g.awayScore ?? "-"}
                     </span>
                     <span className="font-medium">{g.awayCode}</span>
+                    <TeamLogo code={g.awayCode} size={20} />
                   </div>
                   <div className="text-xs text-muted-foreground">{fmtDate(g.gameDate)}</div>
                 </div>

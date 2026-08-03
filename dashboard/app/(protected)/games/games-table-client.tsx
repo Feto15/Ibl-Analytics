@@ -6,6 +6,8 @@ import { fmtDate } from "@/lib/format";
 import type { GameRow } from "@/lib/db/types";
 import { GamePhaseBadge } from "@/components/ibl/badges";
 
+import { TeamLogo } from "@/components/ibl/team-logo";
+
 const columns: SortableColumn<GameRow>[] = [
   {
     key: "phase",
@@ -28,8 +30,9 @@ const columns: SortableColumn<GameRow>[] = [
     key: "home",
     header: "Home",
     cell: (g) => (
-      <Link href={`/teams/${g.homeTeamId}`} className="font-medium hover:underline">
-        {g.homeCode}
+      <Link href={`/teams/${g.homeTeamId}`} className="inline-flex items-center gap-2 font-medium hover:underline">
+        <TeamLogo code={g.homeCode} size={22} />
+        <span>{g.homeCode}</span>
       </Link>
     ),
   },
@@ -48,8 +51,9 @@ const columns: SortableColumn<GameRow>[] = [
     key: "away",
     header: "Away",
     cell: (g) => (
-      <Link href={`/teams/${g.awayTeamId}`} className="font-medium hover:underline">
-        {g.awayCode}
+      <Link href={`/teams/${g.awayTeamId}`} className="inline-flex items-center gap-2 font-medium hover:underline">
+        <TeamLogo code={g.awayCode} size={22} />
+        <span>{g.awayCode}</span>
       </Link>
     ),
   },

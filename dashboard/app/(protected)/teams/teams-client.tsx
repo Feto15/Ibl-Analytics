@@ -10,6 +10,8 @@ import type { SeasonOption, StandingRow } from "@/lib/db/types";
 import type { ReviewMode } from "@/lib/review";
 import { gamePhaseLabel, type GamePhase } from "@/lib/game-phase";
 
+import { TeamLogo } from "@/components/ibl/team-logo";
+
 interface TeamsClientProps {
   data: StandingRow[];
   seasons: SeasonOption[];
@@ -35,18 +37,18 @@ export function TeamsClient({ data, currentSeason, review, phase, sort, dir }: T
         cell: (entry) => entry.rank,
       },
       {
-        key: "code",
-        header: "Code",
+        key: "name",
+        header: "Team",
         cell: (entry) => (
-          <Link href={`/teams/${entry.row.teamId}?season=${currentSeason}${phaseQuery}`} className="font-semibold text-primary hover:underline">
-            {entry.row.code}
+          <Link
+            href={`/teams/${entry.row.teamId}?season=${currentSeason}${phaseQuery}`}
+            className="flex items-center gap-2.5 font-semibold text-primary hover:underline"
+          >
+            <TeamLogo code={entry.row.code} name={entry.row.name} size={26} />
+            <span>{entry.row.name || entry.row.code}</span>
+            <span className="text-xs text-muted-foreground">({entry.row.code})</span>
           </Link>
         ),
-      },
-      {
-        key: "name",
-        header: "Name",
-        cell: (entry) => entry.row.name || "-",
       },
       { key: "games", header: "GP", align: "right", cell: (entry) => entry.row.games },
       { key: "wins", header: "W", align: "right", cell: (entry) => entry.row.wins },

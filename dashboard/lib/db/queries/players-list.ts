@@ -9,6 +9,10 @@ import {
   canonicalPlayerDisplayName,
   canonicalPlayerIdExpression,
 } from "../player-identity";
+import {
+  canonicalTeamIdExpression,
+  teamIdMatches,
+} from "../team-identity";
 
 const SORT_MAP: Record<string, string> = {
   points: "agg.points",
@@ -36,7 +40,7 @@ export async function getPlayers(
   const conditions = [sql`pgs.did_play = true`];
   if (opts.season) conditions.push(sql`g.season_year = ${opts.season}`);
   conditions.push(gamePhaseCondition(sql`g.source_game_key`, opts.phase));
-  if (opts.team) conditions.push(sql`pgs.team_id = ${opts.team}`);
+  if (opts.team) conditions.push(teamIdMatches(sql`pgs.team_id`, opts.team, opts.season));
   if (opts.q) {
     conditions.push(
       sql`(p.display_name ilike ${"%" + opts.q + "%"} or p.normalized_name ilike ${"%" + opts.q + "%"})`
@@ -52,15 +56,11 @@ export async function getPlayers(
   // One row per canonical player (not per player-team or game-stat row).
   const total = await countRows(
     sql`
-      select count(*)::int as c
-      from (
-        select ${canonicalPlayerIdExpression(sql`p.player_id`)} as player_id
-        from player_game_stats pgs
-        join games g on g.game_id = pgs.game_id
-        join players p on p.player_id = pgs.player_id
-        where ${where}
-        group by ${canonicalPlayerIdExpression(sql`p.player_id`)}
-      ) player_rows
+      select count(distinct ${canonicalPlayerIdExpression(sql`pgs.player_id`)})::int as c
+      from player_game_stats pgs
+      join games g on g.game_id = pgs.game_id
+      join players p on p.player_id = pgs.player_id
+      where ${where}
     `
   );
   const offset = (opts.page - 1) * opts.pageSize;
@@ -83,7 +83,7 @@ export async function getPlayers(
     sql`
       with filtered as (
         select
-          ${canonicalPlayerIdExpression(sql`p.player_id`)} as player_id,
+          ${canonicalPlayerIdExpression(sql`pgs.player_id`)} as player_id,
           pgs.team_id,
           pgs.game_id,
           pgs.minutes_seconds,
@@ -143,7 +143,7 @@ export async function getPlayers(
         agg.ts
       from agg
       join players p on p.player_id = agg.player_id
-      left join teams t on t.team_id = agg.team_id
+      left join teams t on t.team_id = ${canonicalTeamIdExpression(sql`agg.team_id`)}
       order by ${orderBy}
       limit ${opts.pageSize} offset ${offset}
     `

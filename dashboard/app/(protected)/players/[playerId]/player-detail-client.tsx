@@ -8,6 +8,7 @@ import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { ShotChart } from "@/components/ibl/shot-chart";
 import { ReviewDot } from "@/components/ibl/badges";
+import { TeamLogo } from "@/components/ibl/team-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, fmtDuration, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 import type {
@@ -85,9 +86,10 @@ export function PlayerDetailClient({
             {profile.teamId ? (
               <Link
                 href={`/teams/${profile.teamId}${seasonQuery}`}
-                className="font-medium text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
               >
-                {profile.teamName || profile.teamCode}
+                <TeamLogo code={profile.teamCode} name={profile.teamName} size={20} />
+                <span>{profile.teamName || profile.teamCode}</span>
               </Link>
             ) : (
               <span>Tanpa tim</span>

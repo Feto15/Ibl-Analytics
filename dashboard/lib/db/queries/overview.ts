@@ -203,41 +203,77 @@ async function loadPlayerLeaderboard(
       ts: unknown;
     }[]>(
       sql`
+        with filtered as (
+          select
+            ${canonicalPlayerIdExpression(sql`pgs.player_id`)} as player_id,
+            pgs.game_id,
+            pgs.team_id,
+            pgs.minutes_seconds,
+            pgs.points,
+            pgs.total_rebounds,
+            pgs.assists,
+            pgs.efficiency,
+            pgs.plus_minus,
+            pgs.fg_made,
+            pgs.fg_attempted,
+            pgs.three_pt_made,
+            pgs.ft_attempted
+          from player_game_stats pgs
+          join games g on g.game_id = pgs.game_id
+          where g.season_year = ${season}
+            and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
+            and pgs.did_play = true
+            and ${excludeBoxScoreReview(sql`g.game_id`, review)}
+        ),
+        primary_team as (
+          select distinct on (f.player_id)
+            f.player_id,
+            t.team_id,
+            t.code,
+            t.name
+          from filtered f
+          join games g on g.game_id = f.game_id
+          join teams t on t.team_id = ${canonicalTeamIdExpression(sql`f.team_id`, sql`g.season_year`)}
+          group by f.player_id, t.team_id, t.code, t.name
+          order by f.player_id, count(*) desc
+        ),
+        agg as (
+          select
+            f.player_id,
+            pt.team_id,
+            pt.code as team_code,
+            pt.name as team_name,
+            count(distinct f.game_id)::int as games_played,
+            avg(f.minutes_seconds)::float8 as minutes_seconds,
+            avg(f.points)::float8 as points,
+            avg(f.total_rebounds)::float8 as rebounds,
+            avg(f.assists)::float8 as assists,
+            avg(f.efficiency)::float8 as efficiency,
+            avg(f.plus_minus)::float8 as plus_minus,
+            (100.0 * sum(f.fg_made + 0.5 * f.three_pt_made) / nullif(sum(f.fg_attempted), 0))::float8 as efg,
+            (100.0 * sum(f.points) / nullif(2 * (sum(f.fg_attempted) + 0.44 * sum(f.ft_attempted)), 0))::float8 as ts
+          from filtered f
+          left join primary_team pt on pt.player_id = f.player_id
+          group by f.player_id, pt.team_id, pt.code, pt.name
+        )
         select
-          ${canonicalPlayerIdExpression(sql`pgs.player_id`)} as player_id,
+          agg.player_id::int as player_id,
           p.display_name,
-          tm.team_id::int as team_id,
-          tm.code as team_code,
-          tm.name as team_name,
-          count(distinct pgs.game_id)::int as games_played,
-          avg(pgs.minutes_seconds)::float8 as minutes_seconds,
-          avg(pgs.points)::float8 as points,
-          avg(pgs.total_rebounds)::float8 as rebounds,
-          avg(pgs.assists)::float8 as assists,
-          avg(pgs.efficiency)::float8 as efficiency,
-          avg(pgs.plus_minus)::float8 as plus_minus,
-          (100.0 * sum(pgs.fg_made + 0.5 * pgs.three_pt_made) / nullif(sum(pgs.fg_attempted), 0))::float8 as efg,
-          (100.0 * sum(pgs.points) / nullif(2 * (sum(pgs.fg_attempted) + 0.44 * sum(pgs.ft_attempted)), 0))::float8 as ts
-        from player_game_stats pgs
-        join games g on g.game_id = pgs.game_id
-        join players p on p.player_id = ${canonicalPlayerIdExpression(sql`pgs.player_id`)}
-        left join lateral (
-          select t.team_id, t.code, t.name
-          from player_game_stats pgs2
-          join games g2 on g2.game_id = pgs2.game_id
-          join teams t on t.team_id = ${canonicalTeamIdExpression(sql`pgs2.team_id`, sql`g2.season_year`)}
-          where ${canonicalPlayerIdExpression(sql`pgs2.player_id`)} = ${canonicalPlayerIdExpression(sql`pgs.player_id`)} and g2.season_year = ${season}
-            and ${gamePhaseCondition(sql`g2.source_game_key`, phase)}
-          group by t.team_id, t.code, t.name
-          order by count(*) desc
-          limit 1
-        ) tm on true
-        where g.season_year = ${season}
-          and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
-          and pgs.did_play = true
-          and ${excludeBoxScoreReview(sql`g.game_id`, review)}
-        group by ${canonicalPlayerIdExpression(sql`pgs.player_id`)}, p.display_name, tm.team_id, tm.code, tm.name
-        order by avg(pgs.points) desc nulls last
+          agg.team_id::int as team_id,
+          agg.team_code,
+          agg.team_name,
+          agg.games_played,
+          agg.minutes_seconds,
+          agg.points,
+          agg.rebounds,
+          agg.assists,
+          agg.efficiency,
+          agg.plus_minus,
+          agg.efg,
+          agg.ts
+        from agg
+        join players p on p.player_id = agg.player_id
+        order by agg.points desc nulls last
         limit ${limit}
       `
     );
