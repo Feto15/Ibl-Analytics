@@ -7,7 +7,7 @@ import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { TrendAreaChart } from "@/components/ibl/trend-charts";
-import { ReviewDot } from "@/components/ibl/badges";
+import { PlayerCategoryBadge, ReviewDot } from "@/components/ibl/badges";
 import { TeamLogo } from "@/components/ibl/team-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, fmtDuration, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
@@ -87,14 +87,14 @@ export function TeamDetailClient({
         <KpiCard label="Net Rtg" value={fmtSigned(summary.netRating)} accent={summary.netRating !== null && summary.netRating < 0 ? "negative" : "positive"} />
       </div>
 
-      <Tabs defaultValue="games" className="w-full">
+      <Tabs defaultValue="roster" className="w-full">
         <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="games">Pertandingan</TabsTrigger>
           <TabsTrigger value="roster">Roster</TabsTrigger>
+          <TabsTrigger value="leaders">Pemain Utama</TabsTrigger>
           <TabsTrigger value="trend">Tren</TabsTrigger>
           <TabsTrigger value="shots">Shot Profile</TabsTrigger>
-          <TabsTrigger value="leaders">Pemain Utama</TabsTrigger>
           <TabsTrigger value="lineups">Lineup</TabsTrigger>
+          <TabsTrigger value="games">Pertandingan</TabsTrigger>
         </TabsList>
 
         <TabsContent value="games" className="mt-3">
@@ -167,12 +167,15 @@ export function TeamDetailClient({
                   key: "player",
                   header: "Pemain",
                   cell: (row) => (
-                    <Link
-                      href={`/players/${row.playerId}${seasonQuery}`}
-                      className="font-medium hover:underline"
-                    >
-                      {row.displayName}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/players/${row.playerId}${seasonQuery}`}
+                        className="font-medium hover:underline"
+                      >
+                        {row.displayName}
+                      </Link>
+                      <PlayerCategoryBadge category={row.category} />
+                    </div>
                   ),
                 },
                 { key: "no", header: "#", align: "right", cell: (row) => row.jerseyNo ?? "-" },
@@ -234,12 +237,15 @@ export function TeamDetailClient({
                   key: "player",
                   header: "Pemain",
                   cell: (row) => (
-                    <Link
-                      href={`/players/${row.playerId}${seasonQuery}`}
-                      className="font-medium hover:underline"
-                    >
-                      {row.displayName}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/players/${row.playerId}${seasonQuery}`}
+                        className="font-medium hover:underline"
+                      >
+                        {row.displayName}
+                      </Link>
+                      <PlayerCategoryBadge category={row.category} />
+                    </div>
                   ),
                 },
                 { key: "gp", header: "GP", align: "right", cell: (row) => fmtNum(row.gamesPlayed, 0) },

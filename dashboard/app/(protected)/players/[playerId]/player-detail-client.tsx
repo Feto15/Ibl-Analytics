@@ -7,7 +7,7 @@ import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { KpiCard } from "@/components/ibl/kpi-card";
 import { ShotChart } from "@/components/ibl/shot-chart";
-import { ReviewDot } from "@/components/ibl/badges";
+import { PlayerCategoryBadge, ReviewDot } from "@/components/ibl/badges";
 import { TeamLogo } from "@/components/ibl/team-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fmtDate, fmtDuration, fmtNum, fmtPct, fmtSigned } from "@/lib/format";
@@ -74,13 +74,14 @@ export function PlayerDetailClient({
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {profile.displayName}
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl flex flex-wrap items-center gap-3">
+            <span>{profile.displayName}</span>
             {profile.jerseyNo ? (
-              <span className="ml-3 inline-flex items-center rounded-full border bg-muted px-2.5 py-0.5 text-sm font-semibold text-muted-foreground">
+              <span className="inline-flex items-center rounded-full border bg-muted px-2.5 py-0.5 text-sm font-semibold text-muted-foreground">
                 #{profile.jerseyNo}
               </span>
             ) : null}
+            <PlayerCategoryBadge category={profile.category} />
           </h1>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {profile.teamId ? (

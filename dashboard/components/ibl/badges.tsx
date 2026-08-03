@@ -1,7 +1,29 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TriangleAlert, CheckCircle2, Info } from "lucide-react";
+import { TriangleAlert, CheckCircle2, Info, Globe } from "lucide-react";
 import type { GamePhase } from "@/lib/game-phase";
+
+export function PlayerCategoryBadge({ category }: { category?: "import" | "local" }) {
+  if (category === "import") {
+    return (
+      <Badge
+        variant="outline"
+        className="gap-1 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium text-[11px] px-1.5 py-0"
+      >
+        <Globe className="size-3 shrink-0" />
+        Import
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium text-[11px] px-1.5 py-0"
+    >
+      Lokal
+    </Badge>
+  );
+}
 
 export function ResultBadge({ result }: { result: "W" | "L" }) {
   return (

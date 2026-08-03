@@ -8,6 +8,9 @@ import { GamePhaseFilter } from "@/components/ibl/game-phase-filter";
 import { SectionCard } from "@/components/ibl/section-card";
 import { EmptyState } from "@/components/ibl/states";
 import { PlayersFilters } from "./players-filters";
+import { PlayerCategoryFilter, type PlayerCategoryOption } from "@/components/ibl/player-category-filter";
+import { PlayerCategoryBadge } from "@/components/ibl/badges";
+import { TeamLogo } from "@/components/ibl/team-logo";
 import { fmtNum, fmtPct, fmtSigned } from "@/lib/format";
 import type { Pagination, PlayerLeaderRow, SeasonOption } from "@/lib/db/types";
 import type { GamePhase } from "@/lib/game-phase";
@@ -20,6 +23,7 @@ interface PlayersClientProps {
   currentSeason: number;
   currentTeam: string;
   currentQuery: string;
+  category?: PlayerCategoryOption;
   sort: string;
   dir: "asc" | "desc";
   phase: GamePhase;
@@ -32,6 +36,7 @@ export function PlayersClient({
   currentSeason,
   currentTeam,
   currentQuery,
+  category = "all",
   sort,
   dir,
   phase,
@@ -48,12 +53,15 @@ export function PlayersClient({
         key: "player",
         header: "Pemain",
         cell: (row) => (
-          <Link
-            href={`/players/${row.playerId}${detailQuery}`}
-            className="font-semibold text-primary hover:underline"
-          >
-            {row.displayName}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/players/${row.playerId}${detailQuery}`}
+              className="font-semibold text-primary hover:underline"
+            >
+              {row.displayName}
+            </Link>
+            <PlayerCategoryBadge category={row.category} />
+          </div>
         ),
       },
       {
@@ -63,9 +71,10 @@ export function PlayersClient({
           row.teamId ? (
             <Link
               href={`/teams/${row.teamId}${seasonQuery}`}
-              className="text-muted-foreground hover:underline"
+              className="inline-flex items-center gap-1.5 text-muted-foreground hover:underline"
             >
-              {row.teamCode}
+              <TeamLogo code={row.teamCode} size={20} />
+              <span>{row.teamCode}</span>
             </Link>
           ) : (
             "-"
@@ -142,6 +151,7 @@ export function PlayersClient({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PlayerCategoryFilter value={category} />
           <GamePhaseFilter value={phase} />
         </div>
       </div>

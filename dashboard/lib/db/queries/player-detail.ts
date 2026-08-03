@@ -16,6 +16,7 @@ import type { GamePhase } from "@/lib/game-phase";
 import {
   canonicalPlayerDisplayName,
   canonicalPlayerId,
+  getPlayerCategory,
   playerIdMatches,
 } from "../player-identity";
 
@@ -92,6 +93,7 @@ export async function getPlayerProfile(
     playerId: canonicalId,
     displayName,
     normalizedName: base[0].normalized_name,
+    category: getPlayerCategory(displayName),
     teamId: int(latest[0]?.team_id) ?? null,
     teamCode: str(latest[0]?.team_code) ?? null,
     teamName: str(latest[0]?.team_name),

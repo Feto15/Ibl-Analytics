@@ -32,6 +32,7 @@ export default async function PlayersPage({
       season,
       team: opts.team,
       q: opts.q,
+      category: opts.category,
       phase,
     }),
   ]);
@@ -49,6 +50,7 @@ export default async function PlayersPage({
         currentSeason={season}
         currentTeam={opts.team ? String(opts.team) : ""}
         currentQuery={opts.q ?? ""}
+        category={opts.category}
         sort={opts.sort}
         dir={opts.dir}
         phase={phase}

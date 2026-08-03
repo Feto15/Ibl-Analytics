@@ -253,6 +253,7 @@ export interface PlayerLeaderRow {
   efgPercent: number | null;
   tsPercent: number | null;
   plusMinusPerGame: number | null;
+  category?: "import" | "local";
 }
 
 export interface OverviewKpis {
@@ -314,6 +315,7 @@ export interface PlayerProfile {
   playerId: number;
   displayName: string;
   normalizedName: string;
+  category?: "import" | "local";
   teamId: number | null;
   teamCode: string | null;
   teamName: string | null;
@@ -356,6 +358,7 @@ export interface TeamShotProfile {
 export interface TeamRosterRow {
   playerId: number;
   displayName: string;
+  category?: "import" | "local";
   jerseyNo: string | null;
   isStarter: boolean | null;
   isCaptain: boolean;

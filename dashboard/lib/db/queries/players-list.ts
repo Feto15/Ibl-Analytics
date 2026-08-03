@@ -8,6 +8,8 @@ import type { GamePhase } from "@/lib/game-phase";
 import {
   canonicalPlayerDisplayName,
   canonicalPlayerIdExpression,
+  getPlayerCategory,
+  playerCategoryCondition,
 } from "../player-identity";
 import {
   canonicalTeamIdExpression,
@@ -35,6 +37,7 @@ export async function getPlayers(
     phase?: GamePhase;
     team?: number;
     q?: string;
+    category?: "all" | "local" | "import";
   }
 ): Promise<PageResult<PlayerLeaderRow>> {
   const conditions = [sql`pgs.did_play = true`];
@@ -45,6 +48,9 @@ export async function getPlayers(
     conditions.push(
       sql`(p.display_name ilike ${"%" + opts.q + "%"} or p.normalized_name ilike ${"%" + opts.q + "%"})`
     );
+  }
+  if (opts.category && opts.category !== "all") {
+    conditions.push(playerCategoryCondition(sql`p.normalized_name`, opts.category));
   }
   const where = conditions.reduce((acc, condition) => sql`${acc} and ${condition}`);
   const sortExpr = SORT_MAP[opts.sort] ?? SORT_MAP.points;
@@ -151,9 +157,11 @@ export async function getPlayers(
   return {
     rows: rows.map((row) => {
       const pid = int(row.player_id) ?? 0;
+      const name = canonicalPlayerDisplayName(pid, row.display_name);
       return {
         playerId: pid,
-        displayName: canonicalPlayerDisplayName(pid, row.display_name),
+        displayName: name,
+        category: getPlayerCategory(name),
         teamId: int(row.team_id) ?? 0,
         teamCode: row.team_code,
         teamName: str(row.team_name),

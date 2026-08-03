@@ -77,6 +77,7 @@ export const playersQuerySchema = z.object({
   season: seasonParam.optional(),
   team: z.coerce.number().int().positive().optional(),
   q: z.string().trim().max(100).optional(),
+  category: z.enum(["all", "local", "import"]).default("all"),
   phase: gamePhaseSchema,
 });
 
