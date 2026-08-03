@@ -13,17 +13,25 @@ import type {
 import { gameRowQuery } from "./overview";
 import { gamePhaseCondition } from "../game-phase";
 import type { GamePhase } from "@/lib/game-phase";
+import {
+  canonicalPlayerDisplayName,
+  canonicalPlayerId,
+  playerIdMatches,
+} from "../player-identity";
 
 export async function getPlayerProfile(
   playerId: number,
   season?: number,
   phase: GamePhase = "regular"
 ): Promise<PlayerProfile | null> {
+  const canonicalId = canonicalPlayerId(playerId);
   const base = await run<{
     player_id: unknown;
     display_name: string;
     normalized_name: string;
-  }[]>(sql`select player_id::int as player_id, display_name, normalized_name from players where player_id = ${playerId} limit 1`);
+  }[]>(
+    sql`select player_id::int as player_id, display_name, normalized_name from players where player_id = ${canonicalId} limit 1`
+  );
   if (!base[0]) return null;
 
   const latest = await run<{
@@ -36,17 +44,17 @@ export async function getPlayerProfile(
     age: unknown;
   }[]>(
     sql`
-      select distinct on (gr.player_id)
+      select distinct on (gr.team_id)
         gr.team_id::int as team_id, t.code as team_code, t.name as team_name,
         gr.jersey_no, gr.position,
         gr.height_cm::int as height_cm, gr.age::int as age
       from game_rosters gr
       join teams t on t.team_id = gr.team_id
       join games g on g.game_id = gr.game_id
-      where gr.player_id = ${playerId}
+      where ${playerIdMatches(sql`gr.player_id`, canonicalId)}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
-      order by gr.player_id, g.game_date desc
+      order by gr.team_id, g.game_date desc
     `
   );
   const stats = await run<{
@@ -56,7 +64,7 @@ export async function getPlayerProfile(
       select count(distinct pgs.game_id)::int as games
       from player_game_stats pgs
       join games g on g.game_id = pgs.game_id
-      where pgs.player_id = ${playerId} and pgs.did_play = true
+      where ${playerIdMatches(sql`pgs.player_id`, canonicalId)} and pgs.did_play = true
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
     `
@@ -69,7 +77,7 @@ export async function getPlayerProfile(
       from player_game_stats pgs
       join games g on g.game_id = pgs.game_id
       join seasons s on s.season_year = g.season_year
-      where pgs.player_id = ${playerId}
+      where ${playerIdMatches(sql`pgs.player_id`, canonicalId)}
       order by season_year desc
     `
   );
@@ -78,9 +86,11 @@ export async function getPlayerProfile(
     competitionName: row.competition_name,
   }));
 
+  const displayName = canonicalPlayerDisplayName(canonicalId, base[0].display_name);
+
   return {
-    playerId: int(base[0].player_id) ?? 0,
-    displayName: base[0].display_name,
+    playerId: canonicalId,
+    displayName,
     normalizedName: base[0].normalized_name,
     teamId: int(latest[0]?.team_id) ?? null,
     teamCode: str(latest[0]?.team_code) ?? null,
@@ -100,6 +110,7 @@ export async function getPlayerGameStats(
   limit = 50,
   phase: GamePhase = "regular"
 ): Promise<PlayerGameStatRow[]> {
+  const canonicalId = canonicalPlayerId(playerId);
   const rows = await run<{
     game_id: unknown;
     game_date: string | null;
@@ -134,7 +145,7 @@ export async function getPlayerGameStats(
       join team_game_stats tgs on tgs.game_id = pgs.game_id and tgs.team_id = pgs.team_id
       join team_game_stats opp on opp.game_id = pgs.game_id and opp.team_id <> pgs.team_id
       join teams opp_t on opp_t.team_id = opp.team_id
-      where pgs.player_id = ${playerId} and pgs.did_play = true
+      where ${playerIdMatches(sql`pgs.player_id`, canonicalId)} and pgs.did_play = true
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       order by g.game_date desc, g.game_id desc
@@ -165,6 +176,7 @@ export async function getPlayerSplits(
   season?: number,
   phase: GamePhase = "regular"
 ): Promise<PlayerSplit[]> {
+  const canonicalId = canonicalPlayerId(playerId);
   const seasonClause = season !== undefined ? sql`and g.season_year = ${season}` : sql``;
   const rows = await run<{
     label: string;
@@ -187,7 +199,7 @@ export async function getPlayerSplits(
       from player_game_stats pgs
       join games g on g.game_id = pgs.game_id
       join team_game_stats tgs on tgs.game_id = pgs.game_id and tgs.team_id = pgs.team_id
-      where pgs.player_id = ${playerId} and pgs.did_play = true ${seasonClause}
+      where ${playerIdMatches(sql`pgs.player_id`, canonicalId)} and pgs.did_play = true ${seasonClause}
         and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       group by case when tgs.is_home then 'Home' else 'Away' end
     `
@@ -217,6 +229,7 @@ export async function getPlayerPlusMinus(
   limit = 30,
   phase: GamePhase = "regular"
 ): Promise<PlusMinusDetailRow[]> {
+  const canonicalId = canonicalPlayerId(playerId);
   const rows = await run<{
     game_id: unknown;
     player_id: unknown;
@@ -242,7 +255,7 @@ export async function getPlayerPlusMinus(
         pm.points_per_minute_off::float8 as points_per_minute_off
       from player_plus_minus_details pm
       join games g on g.game_id = pm.game_id
-      where pm.player_id = ${playerId}
+      where ${playerIdMatches(sql`pm.player_id`, canonicalId)}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
       order by g.game_date desc, g.game_id desc
@@ -265,7 +278,7 @@ export async function getPlayerPlusMinus(
   }
   return rows.map((row) => ({
     gameId: int(row.game_id) ?? 0,
-    playerId: int(row.player_id) ?? 0,
+    playerId: canonicalId,
     teamId: int(row.team_id) ?? 0,
     minutesOnSeconds: int(row.minutes_on_seconds),
     minutesOffSeconds: int(row.minutes_off_seconds),
@@ -287,11 +300,12 @@ export async function getPlayerGames(
   limit = 30,
   phase: GamePhase = "regular"
 ): Promise<GameRow[]> {
+  const canonicalId = canonicalPlayerId(playerId);
   const where = season
-    ? sql`g.game_id in (select game_id from player_game_stats where player_id = ${playerId})
+    ? sql`g.game_id in (select game_id from player_game_stats where ${playerIdMatches(sql`player_id`, canonicalId)})
         and g.season_year = ${season}
         and ${gamePhaseCondition(sql`g.source_game_key`, phase)}`
-    : sql`g.game_id in (select game_id from player_game_stats where player_id = ${playerId})
+    : sql`g.game_id in (select game_id from player_game_stats where ${playerIdMatches(sql`player_id`, canonicalId)})
         and ${gamePhaseCondition(sql`g.source_game_key`, phase)}`;
   return gameRowQuery(where, sql`g.game_date desc, g.game_id desc`, sql`${limit}`);
 }
@@ -313,12 +327,20 @@ export async function searchPlayers(q: string, limit: number) {
       ) t on true
       where p.display_name ilike ${"%" + q + "%"} or p.normalized_name ilike ${"%" + q + "%"}
       order by p.display_name
-      limit ${limit}
+      limit ${limit * 2}
     `
   );
-  return rows.map((row) => ({
-    playerId: int(row.player_id) ?? 0,
-    displayName: row.display_name,
-    teamCode: str(row.team_code),
-  }));
+  const map = new Map<number, { playerId: number; displayName: string; teamCode: string | null }>();
+  for (const row of rows) {
+    const origId = int(row.player_id) ?? 0;
+    const canId = canonicalPlayerId(origId);
+    if (!map.has(canId)) {
+      map.set(canId, {
+        playerId: canId,
+        displayName: canonicalPlayerDisplayName(canId, row.display_name),
+        teamCode: str(row.team_code),
+      });
+    }
+  }
+  return Array.from(map.values()).slice(0, limit);
 }

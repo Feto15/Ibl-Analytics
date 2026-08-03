@@ -5,6 +5,10 @@ import { countRows, int, num, str } from "./helpers";
 import type { PageResult, PlayerLeaderRow } from "../types";
 import { gamePhaseCondition } from "../game-phase";
 import type { GamePhase } from "@/lib/game-phase";
+import {
+  canonicalPlayerDisplayName,
+  canonicalPlayerIdExpression,
+} from "../player-identity";
 
 const SORT_MAP: Record<string, string> = {
   points: "agg.points",
@@ -42,20 +46,20 @@ export async function getPlayers(
   const sortExpr = SORT_MAP[opts.sort] ?? SORT_MAP.points;
   const orderBy =
     opts.dir === "asc"
-      ? sql.raw(`${sortExpr} asc nulls last, agg.display_name asc`)
-      : sql.raw(`${sortExpr} desc nulls last, agg.display_name asc`);
+      ? sql.raw(`${sortExpr} asc nulls last, p.display_name asc`)
+      : sql.raw(`${sortExpr} desc nulls last, p.display_name asc`);
 
-  // One row per player (not per player-team or game-stat row).
+  // One row per canonical player (not per player-team or game-stat row).
   const total = await countRows(
     sql`
       select count(*)::int as c
       from (
-        select p.player_id
+        select ${canonicalPlayerIdExpression(sql`p.player_id`)} as player_id
         from player_game_stats pgs
         join games g on g.game_id = pgs.game_id
         join players p on p.player_id = pgs.player_id
         where ${where}
-        group by p.player_id
+        group by ${canonicalPlayerIdExpression(sql`p.player_id`)}
       ) player_rows
     `
   );
@@ -79,8 +83,7 @@ export async function getPlayers(
     sql`
       with filtered as (
         select
-          p.player_id,
-          p.display_name,
+          ${canonicalPlayerIdExpression(sql`p.player_id`)} as player_id,
           pgs.team_id,
           pgs.game_id,
           pgs.minutes_seconds,
@@ -109,7 +112,6 @@ export async function getPlayers(
       agg as (
         select
           f.player_id,
-          f.display_name,
           pt.team_id,
           count(distinct f.game_id)::int as games_played,
           avg(f.minutes_seconds)::float8 as minutes_seconds,
@@ -122,11 +124,11 @@ export async function getPlayers(
           (100.0 * sum(f.points) / nullif(2 * (sum(f.fg_attempted) + 0.44 * sum(f.ft_attempted)), 0))::float8 as ts
         from filtered f
         join primary_team pt on pt.player_id = f.player_id
-        group by f.player_id, f.display_name, pt.team_id
+        group by f.player_id, pt.team_id
       )
       select
         agg.player_id::int as player_id,
-        agg.display_name,
+        p.display_name,
         agg.team_id::int as team_id,
         t.code as team_code,
         t.name as team_name,
@@ -140,28 +142,32 @@ export async function getPlayers(
         agg.efg,
         agg.ts
       from agg
+      join players p on p.player_id = agg.player_id
       left join teams t on t.team_id = agg.team_id
       order by ${orderBy}
       limit ${opts.pageSize} offset ${offset}
     `
   );
   return {
-    rows: rows.map((row) => ({
-      playerId: int(row.player_id) ?? 0,
-      displayName: row.display_name,
-      teamId: int(row.team_id) ?? 0,
-      teamCode: row.team_code,
-      teamName: str(row.team_name),
-      gamesPlayed: int(row.games_played) ?? 0,
-      minutesPerGame: num(row.minutes_seconds) !== null ? num(row.minutes_seconds)! / 60 : null,
-      pointsPerGame: num(row.points),
-      reboundsPerGame: num(row.rebounds),
-      assistsPerGame: num(row.assists),
-      efficiencyPerGame: num(row.efficiency),
-      efgPercent: num(row.efg),
-      tsPercent: num(row.ts),
-      plusMinusPerGame: num(row.plus_minus),
-    })),
+    rows: rows.map((row) => {
+      const pid = int(row.player_id) ?? 0;
+      return {
+        playerId: pid,
+        displayName: canonicalPlayerDisplayName(pid, row.display_name),
+        teamId: int(row.team_id) ?? 0,
+        teamCode: row.team_code,
+        teamName: str(row.team_name),
+        gamesPlayed: int(row.games_played) ?? 0,
+        minutesPerGame: num(row.minutes_seconds) !== null ? num(row.minutes_seconds)! / 60 : null,
+        pointsPerGame: num(row.points),
+        reboundsPerGame: num(row.rebounds),
+        assistsPerGame: num(row.assists),
+        efficiencyPerGame: num(row.efficiency),
+        efgPercent: num(row.efg),
+        tsPercent: num(row.ts),
+        plusMinusPerGame: num(row.plus_minus),
+      };
+    }),
     pagination: {
       page: opts.page,
       pageSize: opts.pageSize,

@@ -3,6 +3,11 @@ import { sql } from "drizzle-orm";
 import { run } from "../client";
 import { int, num, str } from "./helpers";
 import { canonicalTeamIdExpression } from "../team-identity";
+import {
+  canonicalPlayerDisplayName,
+  canonicalPlayerIdExpression,
+  playerIdMatches,
+} from "../player-identity";
 import { gamePhaseCondition } from "../game-phase";
 import type { GamePhase } from "@/lib/game-phase";
 import type { ShotPoint } from "../types";
@@ -27,7 +32,7 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
   const conditions = [sql`s.court_x_meters is not null and s.court_y_meters is not null`];
   if (filters.gameId) conditions.push(sql`s.game_id = ${filters.gameId}`);
   if (filters.teamId) conditions.push(sql`s.team_id = ${filters.teamId}`);
-  if (filters.playerId) conditions.push(sql`s.player_id = ${filters.playerId}`);
+  if (filters.playerId) conditions.push(playerIdMatches(sql`s.player_id`, filters.playerId));
   if (filters.season) conditions.push(sql`g.season_year = ${filters.season}`);
   if (filters.phase) conditions.push(gamePhaseCondition(sql`g.source_game_key`, filters.phase));
   if (filters.period) conditions.push(sql`s.period_no = ${filters.period}`);
@@ -62,7 +67,7 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
       select
         s.shot_id::int as shot_id, s.game_id::int as game_id,
         ${canonicalTeamIdExpression(sql`s.team_id`, sql`g.season_year`)}::int as team_id, t.code as team_code,
-        s.player_id::int as player_id, p.display_name as player_name,
+        ${canonicalPlayerIdExpression(sql`s.player_id`)}::int as player_id, p.display_name as player_name,
         s.made, s.points,
         s.court_x_meters::float8 as court_x, s.court_y_meters::float8 as court_y,
         s.area_name, s.confidence_score::float8 as confidence,
@@ -71,29 +76,33 @@ export async function getShots(filters: ShotChartFilters): Promise<ShotPoint[]> 
       from shots s
       join games g on g.game_id = s.game_id
       join teams t on t.team_id = ${canonicalTeamIdExpression(sql`s.team_id`, sql`g.season_year`)}
-      left join players p on p.player_id = s.player_id
+      left join players p on p.player_id = ${canonicalPlayerIdExpression(sql`s.player_id`)}
       where ${where}
       order by s.game_id, s.shot_id
       limit ${limit}
     `
   );
-  return rows.map((r) => ({
-    shotId: int(r.shot_id) ?? 0,
-    gameId: int(r.game_id) ?? 0,
-    teamId: int(r.team_id) ?? 0,
-    teamCode: r.team_code,
-    playerId: int(r.player_id),
-    playerName: str(r.player_name),
-    made: r.made === true || r.made === "t",
-    points: int(r.points),
-    courtX: num(r.court_x) ?? 0,
-    courtY: num(r.court_y) ?? 0,
-    areaName: str(r.area_name),
-    confidence: num(r.confidence),
-    pbpMatchStatus: str(r.pbp_status),
-    periodNo: int(r.period_no),
-    clock: str(r.clock),
-  }));
+  return rows.map((r) => {
+    const pid = int(r.player_id);
+    const origName = str(r.player_name);
+    return {
+      shotId: int(r.shot_id) ?? 0,
+      gameId: int(r.game_id) ?? 0,
+      teamId: int(r.team_id) ?? 0,
+      teamCode: r.team_code,
+      playerId: pid,
+      playerName: pid !== null && origName !== null ? canonicalPlayerDisplayName(pid, origName) : origName,
+      made: r.made === true || r.made === "t",
+      points: int(r.points),
+      courtX: num(r.court_x) ?? 0,
+      courtY: num(r.court_y) ?? 0,
+      areaName: str(r.area_name),
+      confidence: num(r.confidence),
+      pbpMatchStatus: str(r.pbp_status),
+      periodNo: int(r.period_no),
+      clock: str(r.clock),
+    };
+  });
 }
 
 export async function getShotAreas(season?: number, phase?: GamePhase) {

@@ -12,6 +12,10 @@ import {
   canonicalTeamIdExpression,
   teamIdMatches,
 } from "../team-identity";
+import {
+  canonicalPlayerDisplayName,
+  canonicalPlayerIdExpression,
+} from "../player-identity";
 import type {
   GameRow,
   PlayerLeaderRow,
@@ -271,10 +275,10 @@ export async function getTeamTopPlayers(
   }[]>(
     sql`
       select
-        p.player_id::int as player_id,
+        ${canonicalPlayerIdExpression(sql`pgs.player_id`)} as player_id,
         p.display_name,
         t.code as team_code, t.name as team_name,
-        count(*)::int as games_played,
+        count(distinct pgs.game_id)::int as games_played,
         avg(pgs.minutes_seconds)::float8 as minutes_seconds,
         avg(pgs.points)::float8 as points,
         avg(pgs.total_rebounds)::float8 as rebounds,
@@ -285,32 +289,35 @@ export async function getTeamTopPlayers(
         (100.0 * sum(pgs.points) / nullif(2 * (sum(pgs.fg_attempted) + 0.44 * sum(pgs.ft_attempted)), 0))::float8 as ts
       from player_game_stats pgs
       join games g on g.game_id = pgs.game_id
-      join players p on p.player_id = pgs.player_id
+      join players p on p.player_id = ${canonicalPlayerIdExpression(sql`pgs.player_id`)}
       join teams t on t.team_id = ${canonicalTeamIdExpression(sql`pgs.team_id`, sql`g.season_year`)}
       where ${teamIdMatches(sql`pgs.team_id`, canonicalId, season)} and pgs.did_play = true
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
-      group by p.player_id, p.display_name, t.code, t.name
+      group by ${canonicalPlayerIdExpression(sql`pgs.player_id`)}, p.display_name, t.code, t.name
       order by avg(pgs.points) desc nulls last
       limit ${limit}
     `
   );
-  return rows.map((row) => ({
-    playerId: int(row.player_id) ?? 0,
-    displayName: row.display_name,
-    teamId: canonicalId,
-    teamCode: row.team_code,
-    teamName: str(row.team_name),
-    gamesPlayed: int(row.games_played) ?? 0,
-    minutesPerGame: num(row.minutes_seconds) !== null ? num(row.minutes_seconds)! / 60 : null,
-    pointsPerGame: num(row.points),
-    reboundsPerGame: num(row.rebounds),
-    assistsPerGame: num(row.assists),
-    efficiencyPerGame: num(row.efficiency),
-    efgPercent: num(row.efg),
-    tsPercent: num(row.ts),
-    plusMinusPerGame: num(row.plus_minus),
-  }));
+  return rows.map((row) => {
+    const pid = int(row.player_id) ?? 0;
+    return {
+      playerId: pid,
+      displayName: canonicalPlayerDisplayName(pid, row.display_name),
+      teamId: canonicalId,
+      teamCode: row.team_code,
+      teamName: str(row.team_name),
+      gamesPlayed: int(row.games_played) ?? 0,
+      minutesPerGame: num(row.minutes_seconds) !== null ? num(row.minutes_seconds)! / 60 : null,
+      pointsPerGame: num(row.points),
+      reboundsPerGame: num(row.rebounds),
+      assistsPerGame: num(row.assists),
+      efficiencyPerGame: num(row.efficiency),
+      efgPercent: num(row.efg),
+      tsPercent: num(row.ts),
+      plusMinusPerGame: num(row.plus_minus),
+    };
+  });
 }
 
 export async function getTeamRoster(
@@ -332,8 +339,8 @@ export async function getTeamRoster(
     minutes_per_game: unknown;
   }[]>(
     sql`
-      select distinct on (gr.player_id)
-        gr.player_id::int as player_id,
+      select distinct on (${canonicalPlayerIdExpression(sql`gr.player_id`)})
+        ${canonicalPlayerIdExpression(sql`gr.player_id`)}::int as player_id,
         p.display_name,
         gr.jersey_no,
         gr.is_starter,
@@ -344,29 +351,32 @@ export async function getTeamRoster(
         gr.points_per_game::float8 as points_per_game,
         gr.minutes_per_game::float8 as minutes_per_game
       from game_rosters gr
-      join players p on p.player_id = gr.player_id
+      join players p on p.player_id = ${canonicalPlayerIdExpression(sql`gr.player_id`)}
       join games g on g.game_id = gr.game_id
       where ${teamIdMatches(sql`gr.team_id`, canonicalId, season)}
       ${season !== undefined ? sql`and g.season_year = ${season}` : sql``}
       and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
-      order by gr.player_id, g.game_date desc
+      order by ${canonicalPlayerIdExpression(sql`gr.player_id`)}, g.game_date desc
     `
   );
-  return rows.map((row) => ({
-    playerId: int(row.player_id) ?? 0,
-    displayName: row.display_name,
-    jerseyNo: str(row.jersey_no),
-    isStarter:
-      row.is_starter === true || row.is_starter === "t"
-        ? true
-        : row.is_starter === false || row.is_starter === "f"
-          ? false
-          : null,
-    isCaptain: row.is_captain === true || row.is_captain === "t",
-    position: str(row.position),
-    heightCm: int(row.height_cm),
-    age: int(row.age),
-    pointsPerGame: num(row.points_per_game),
-    minutesPerGame: num(row.minutes_per_game),
-  }));
+  return rows.map((row) => {
+    const pid = int(row.player_id) ?? 0;
+    return {
+      playerId: pid,
+      displayName: canonicalPlayerDisplayName(pid, row.display_name),
+      jerseyNo: str(row.jersey_no),
+      isStarter:
+        row.is_starter === true || row.is_starter === "t"
+          ? true
+          : row.is_starter === false || row.is_starter === "f"
+            ? false
+            : null,
+      isCaptain: row.is_captain === true || row.is_captain === "t",
+      position: str(row.position),
+      heightCm: int(row.height_cm),
+      age: int(row.age),
+      pointsPerGame: num(row.points_per_game),
+      minutesPerGame: num(row.minutes_per_game),
+    };
+  });
 }

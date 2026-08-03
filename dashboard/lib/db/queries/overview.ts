@@ -7,6 +7,10 @@ import { excludeBoxScoreReview } from "./review-scope";
 import type { ReviewMode } from "@/lib/review";
 import type { GamePhase } from "@/lib/game-phase";
 import { canonicalTeamId, canonicalTeamIdExpression } from "../team-identity";
+import {
+  canonicalPlayerDisplayName,
+  canonicalPlayerIdExpression,
+} from "../player-identity";
 import { gamePhaseCondition, gamePhaseExpression } from "../game-phase";
 import type {
   GameRow,
@@ -200,12 +204,12 @@ async function loadPlayerLeaderboard(
     }[]>(
       sql`
         select
-          p.player_id::int as player_id,
+          ${canonicalPlayerIdExpression(sql`pgs.player_id`)} as player_id,
           p.display_name,
           tm.team_id::int as team_id,
           tm.code as team_code,
           tm.name as team_name,
-          count(*)::int as games_played,
+          count(distinct pgs.game_id)::int as games_played,
           avg(pgs.minutes_seconds)::float8 as minutes_seconds,
           avg(pgs.points)::float8 as points,
           avg(pgs.total_rebounds)::float8 as rebounds,
@@ -216,13 +220,13 @@ async function loadPlayerLeaderboard(
           (100.0 * sum(pgs.points) / nullif(2 * (sum(pgs.fg_attempted) + 0.44 * sum(pgs.ft_attempted)), 0))::float8 as ts
         from player_game_stats pgs
         join games g on g.game_id = pgs.game_id
-        join players p on p.player_id = pgs.player_id
+        join players p on p.player_id = ${canonicalPlayerIdExpression(sql`pgs.player_id`)}
         left join lateral (
           select t.team_id, t.code, t.name
           from player_game_stats pgs2
           join games g2 on g2.game_id = pgs2.game_id
           join teams t on t.team_id = ${canonicalTeamIdExpression(sql`pgs2.team_id`, sql`g2.season_year`)}
-          where pgs2.player_id = p.player_id and g2.season_year = ${season}
+          where ${canonicalPlayerIdExpression(sql`pgs2.player_id`)} = ${canonicalPlayerIdExpression(sql`pgs.player_id`)} and g2.season_year = ${season}
             and ${gamePhaseCondition(sql`g2.source_game_key`, phase)}
           group by t.team_id, t.code, t.name
           order by count(*) desc
@@ -232,27 +236,30 @@ async function loadPlayerLeaderboard(
           and ${gamePhaseCondition(sql`g.source_game_key`, phase)}
           and pgs.did_play = true
           and ${excludeBoxScoreReview(sql`g.game_id`, review)}
-        group by p.player_id, p.display_name, tm.team_id, tm.code, tm.name
+        group by ${canonicalPlayerIdExpression(sql`pgs.player_id`)}, p.display_name, tm.team_id, tm.code, tm.name
         order by avg(pgs.points) desc nulls last
         limit ${limit}
       `
     );
-    return rows.map((r) => ({
-      playerId: int(r.player_id) ?? 0,
-      displayName: r.display_name,
-      teamId: int(r.team_id) ?? 0,
-      teamCode: r.team_code,
-      teamName: str(r.team_name),
-      gamesPlayed: int(r.games_played) ?? 0,
-      minutesPerGame: num(r.minutes_seconds) !== null ? num(r.minutes_seconds)! / 60 : null,
-      pointsPerGame: num(r.points),
-      reboundsPerGame: num(r.rebounds),
-      assistsPerGame: num(r.assists),
-      efficiencyPerGame: num(r.efficiency),
-      efgPercent: num(r.efg),
-      tsPercent: num(r.ts),
-      plusMinusPerGame: num(r.plus_minus),
-    }));
+    return rows.map((r) => {
+      const pid = int(r.player_id) ?? 0;
+      return {
+        playerId: pid,
+        displayName: canonicalPlayerDisplayName(pid, r.display_name),
+        teamId: int(r.team_id) ?? 0,
+        teamCode: r.team_code,
+        teamName: str(r.team_name),
+        gamesPlayed: int(r.games_played) ?? 0,
+        minutesPerGame: num(r.minutes_seconds) !== null ? num(r.minutes_seconds)! / 60 : null,
+        pointsPerGame: num(r.points),
+        reboundsPerGame: num(r.rebounds),
+        assistsPerGame: num(r.assists),
+        efficiencyPerGame: num(r.efficiency),
+        efgPercent: num(r.efg),
+        tsPercent: num(r.ts),
+        plusMinusPerGame: num(r.plus_minus),
+      };
+    });
 }
 
 const getCachedPlayerLeaderboard = cached(

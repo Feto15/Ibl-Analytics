@@ -16,3 +16,4 @@ export * as teamDetailLoaderDb from "./queries/team-detail-loader";
 export * as playerDetailDb from "./queries/player-detail";
 export * as playersListDb from "./queries/players-list";
 export * as gameDetailDb from "./queries/game-detail-loader";
+export * from "./player-identity";
